@@ -1,18 +1,28 @@
 # X Growth Assistant
 
-AI-powered X content assistant for software engineers. Generate engaging tweets, analyze your niche, and grow your X presence with AI-driven insights.
+AI-powered X content assistant for software engineers. Generate engaging tweets, reply to threads, plan content, and grow your X presence with AI-driven insights.
+
+## Features
+
+- **Tweet Generator**: Create single tweets and multi-tweet threads with interactive character counts and thread visualization.
+- **Reply Writer**: Generate context-aware replies to engage with your audience.
+- **Content Planner**: Plan 7-day content strategies, seamlessly convert ideas to tweets, and export plans as Markdown.
+- **Bio Builder**: Optimize your X profile bio.
+- **History Module**: Automatically saves your last 20 generated outputs for quick reference and copying.
+- **Local Settings**: Securely manage your Gemini API key and context settings directly in your browser.
 
 ## Tech Stack
 
 - **Vanilla HTML/CSS/JS** - No frameworks, no build step
 - **Google Fonts** - Syne (UI) + JetBrains Mono (code)
 - **Gemini API** - AI-powered content generation
-- **localStorage** - Client-side data persistence
+- **localStorage** - Client-side data persistence for history and settings
 
 ## Setup
 
-1. Open `index.html` in your browser
-2. That's it! No installation or build step required.
+1. Open `index.html` in your browser.
+2. Go to the Settings tab to configure your Gemini API key.
+3. Start generating content!
 
 ## Development
 
@@ -23,7 +33,7 @@ AI-powered X content assistant for software engineers. Generate engaging tweets,
 
 ## Project Structure
 
-```
+```text
 x_growth/
 ├── index.html          # Semantic HTML markup
 ├── css/
@@ -37,13 +47,7 @@ x_growth/
 
 ## Specifications
 
-Detailed implementation specs are available in `.sisyphus/specs/`:
-
-- `01-architecture-setup.md` - Foundation setup (this implementation)
-- `02-api-integration.md` - Gemini API integration
-- `03-tweet-generator.md` - Tweet generation module
-- `04-niche-analyzer.md` - Niche analysis module
-- `05-layout-ui.md` - UI layout and components
+Detailed implementation specs are available in `.sisyphus/specs/`, covering everything from architecture to specific feature implementations like the `Thread Formatter`, `History Feature`, and `Markdown Export`.
 
 ## Browser Requirements
 
