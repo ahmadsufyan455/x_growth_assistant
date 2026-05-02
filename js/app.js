@@ -325,6 +325,110 @@ const copyToClipboard = async (text, btn) => {
   }
 };
 
+const OutputCard = {
+  render(containerId, items, options = {}) {
+    const { charLimit, copyClass = 'copy-btn', onRegenerate } = options;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const cardsHTML = items.map((item) => {
+      const text = item.text;
+      const label = item.label;
+      const length = text.length;
+      const pct = charLimit ? (length / charLimit) * 100 : 0;
+      
+      let charCountClass = 'char-count-ok';
+      if (pct > 100) {
+        charCountClass = 'char-count-over';
+      } else if (pct > 80) {
+        charCountClass = 'char-count-warn';
+      }
+
+      return `
+        <div class="output-card">
+          <div class="output-card-header">
+            <span class="output-card-label">${escapeHTML(label)}</span>
+            <span class="output-card-meta ${charCountClass}">${length} / ${charLimit}</span>
+          </div>
+          <div class="output-card-content">${escapeHTML(text)}</div>
+          <div class="output-card-footer">
+            <button class="btn btn-secondary btn-sm ${copyClass}" data-text="${escapeHTML(text)}">📋 Copy</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const regenerateHTML = onRegenerate 
+      ? '<button class="btn btn-ghost w-full mt-3">🔄 Regenerate</button>'
+      : '';
+
+    container.innerHTML = cardsHTML + regenerateHTML;
+
+    container.addEventListener('click', (e) => {
+      const btn = e.target.closest(`.${copyClass}`);
+      if (btn) {
+        const text = btn.getAttribute('data-text');
+        navigator.clipboard.writeText(text)
+          .then(() => Toast.show('Copied to clipboard!'))
+          .catch(() => Toast.show('Failed to copy'));
+      } else if (e.target.closest('.btn-ghost') && onRegenerate) {
+        onRegenerate();
+      }
+    });
+  },
+
+  renderLoading(containerId, message = 'Generating...') {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = loadingHTML(message);
+  },
+
+  renderError(containerId, message) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(message)}</div>`;
+  }
+};
+
+const Toast = (() => {
+  let container = null;
+  let currentToast = null;
+  let timeoutId = null;
+
+  const getContainer = () => {
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+    return container;
+  };
+
+  return {
+    show(message) {
+      // Clear existing toast and timeout
+      if (currentToast) {
+        currentToast.remove();
+        clearTimeout(timeoutId);
+      }
+
+      const toastContainer = getContainer();
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = message;
+      
+      toastContainer.appendChild(toast);
+      currentToast = toast;
+
+      // Auto-dismiss after 2 seconds
+      timeoutId = setTimeout(() => {
+        toast.remove();
+        currentToast = null;
+      }, 2000);
+    }
+  };
+})();
+
 const SettingsModule = {
   render() {
     return `<div class="module-settings">
@@ -588,24 +692,11 @@ const TweetGeneratorModule = {
   },
 
   renderOutput(variations) {
-    const cards = variations.map((v) => `
-      <div class="output-card">
-        <div class="output-card-header">
-          <span class="output-card-label">${escapeHTML(v.label)}</span>
-          <span class="output-card-meta">${v.text.length} chars</span>
-        </div>
-        <div class="output-card-content">${escapeHTML(v.text)}</div>
-        <div class="output-card-footer">
-          <button class="btn btn-secondary btn-sm copy-tweet-btn" data-text="${escapeHTML(v.text)}">📋 Copy</button>
-        </div>
-      </div>`).join('');
-
-    document.getElementById('tweet-output').innerHTML = cards +
-      `<button id="regen-tweet-btn" class="btn btn-ghost w-full mt-3">🔄 Regenerate</button>`;
-
-    document.querySelectorAll('.copy-tweet-btn').forEach((btn) =>
-      btn.addEventListener('click', () => copyToClipboard(btn.dataset.text, btn)));
-    document.getElementById('regen-tweet-btn').addEventListener('click', () => this.generate());
+    OutputCard.render('tweet-output', variations, {
+      charLimit: 280,
+      copyClass: 'copy-tweet-btn',
+      onRegenerate: () => this.generate()
+    });
   }
 };
 
@@ -680,24 +771,11 @@ const ReplyWriterModule = {
   },
 
   renderOutput(replies) {
-    const cards = replies.map((r) => `
-      <div class="output-card">
-        <div class="output-card-header">
-          <span class="output-card-label">${escapeHTML(r.label)}</span>
-          <span class="output-card-meta">${r.text.length} chars</span>
-        </div>
-        <div class="output-card-content">${escapeHTML(r.text)}</div>
-        <div class="output-card-footer">
-          <button class="btn btn-secondary btn-sm copy-reply-btn" data-text="${escapeHTML(r.text)}">📋 Copy</button>
-        </div>
-      </div>`).join('');
-
-    document.getElementById('reply-output').innerHTML = cards +
-      `<button id="regen-reply-btn" class="btn btn-ghost w-full mt-3">🔄 Regenerate</button>`;
-
-    document.querySelectorAll('.copy-reply-btn').forEach((btn) =>
-      btn.addEventListener('click', () => copyToClipboard(btn.dataset.text, btn)));
-    document.getElementById('regen-reply-btn').addEventListener('click', () => this.generate());
+    OutputCard.render('reply-output', replies, {
+      charLimit: 280,
+      copyClass: 'copy-reply-btn',
+      onRegenerate: () => this.generate()
+    });
   }
 };
 
@@ -792,14 +870,80 @@ const ContentPlannerModule = {
 };
 
 const BioBuilderModule = {
+  currentInputs: null,
+
   render() {
-    return `<div class="module-placeholder">
-      <span class="ph-icon">👤</span>
-      <p class="ph-title">Bio Builder</p>
-      <p class="ph-desc">Coming soon</p>
-    </div>`;
+    return `<div class="module-bio-builder">
+  <div class="module-header">
+    <h2 class="module-title">Bio Builder</h2>
+    <p class="module-description">Generate a professional X bio that makes profile visitors hit Follow</p>
+  </div>
+  <div class="card mb-4">
+    <div class="input-group">
+      <label class="label" for="bio-role">Role &amp; experience <span style="color:var(--error-color)">*</span></label>
+      <input type="text" id="bio-role" class="input" placeholder="Senior Frontend Engineer, 5 years">
+    </div>
+    <div class="input-group">
+      <label class="label" for="bio-building">What you're building <span style="color:var(--error-color)">*</span></label>
+      <input type="text" id="bio-building" class="input" placeholder="AI-powered productivity tools">
+    </div>
+    <div class="input-group">
+      <label class="label" for="bio-known-for">Things to be known for <span class="label-optional">(optional)</span></label>
+      <input type="text" id="bio-known-for" class="input" placeholder="React, TypeScript, open source">
+    </div>
+    <div class="input-group">
+      <label class="label" for="bio-personal">Personal detail <span class="label-optional">(optional)</span></label>
+      <input type="text" id="bio-personal" class="input" placeholder="Based in Jakarta, coffee addict">
+    </div>
+    <button id="generate-bio-btn" class="btn btn-primary w-full">Generate Bios</button>
+  </div>
+  <div id="bio-output"></div>
+</div>`;
   },
-  init() {}
+
+  init() {
+    document.getElementById('generate-bio-btn').addEventListener('click', () => this.generate());
+  },
+
+  async generate() {
+    const role = document.getElementById('bio-role').value.trim();
+    const building = document.getElementById('bio-building').value.trim();
+    const knownFor = document.getElementById('bio-known-for').value.trim();
+    const personal = document.getElementById('bio-personal').value.trim();
+
+    if (!role) { alert('Please enter your role & experience'); return; }
+    if (!building) { alert('Please enter what you\'re building'); return; }
+    if (!AppState.apiKey) { alert('Please set your API key in Settings'); return; }
+
+    this.currentInputs = { role, building, knownFor, personal };
+
+    document.getElementById('bio-output').innerHTML = loadingHTML('Generating bios\u2026');
+    try {
+      const result = await callGeminiAPI(this.buildPrompt(role, building, knownFor, personal), AppState.apiKey);
+      this.renderOutput(result.bios);
+      AppState.addToHistory({ module: 'bio-builder', content: result.bios[0].text, metadata: {} });
+    } catch (err) {
+      document.getElementById('bio-output').innerHTML =
+        `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(err.message)}</div>`;
+    }
+  },
+
+  buildPrompt(role, building, knownFor, personal) {
+    const ctx = AppState.nicheProfile
+      ? `User niche context: ${AppState.nicheProfile.role}. Focus areas: ${AppState.nicheProfile.focusAreas.join(', ')}.`
+      : '';
+    const knownLine = knownFor ? `\nKnown for: ${knownFor}` : '';
+    const personalLine = personal ? `\nPersonal detail: ${personal}` : '';
+    return `${ctx}\n\nGenerate 3 distinct X bio options based on these inputs:\n\nRole & experience: ${role}\nWhat they're building: ${building}${knownLine}${personalLine}\n\nStyle requirements for each bio:\n1. "Minimal & punchy" — Short, impactful, uses line breaks or pipes to separate ideas. Feels clean and confident.\n2. "Story-driven" — Narrative arc, shows the journey or transition. Feels personal and authentic.\n3. "Bold & direct" — Strong stance, memorable claim. Feels authoritative and opinionated.\n\nRules:\n- Each bio MUST be 160 characters or fewer.\n- No hashtags.\n- No emojis.\n- Write in an engineer's voice — direct, specific, no fluff.\n- Reflect the specific role, goals, and personal details provided.\n- Each bio should feel genuinely different in structure and tone.\n\nReturn JSON only:\n{\n  "bios": [\n    {"label": "Minimal & punchy", "text": "..."},\n    {"label": "Story-driven", "text": "..."},\n    {"label": "Bold & direct", "text": "..."}\n  ]\n}`;
+  },
+
+  renderOutput(bios) {
+    OutputCard.render('bio-output', bios, {
+      charLimit: 160,
+      copyClass: 'copy-bio-btn',
+      onRegenerate: () => this.generate()
+    });
+  }
 };
 
 const NavigationManager = {
