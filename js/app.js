@@ -169,7 +169,7 @@ const ErrorHandler = {
 
     // Try to extract HTTP status code from error message for icon selection
     const isAuthError = message.toLowerCase().includes('api key') ||
-                        message.toLowerCase().includes('unauthorized');
+      message.toLowerCase().includes('unauthorized');
 
     container.innerHTML = `
       <div class="error-card">
@@ -354,8 +354,8 @@ const ErrorHandler = {
 
     // Network error
     if (msg.toLowerCase().includes('network') ||
-        msg.toLowerCase().includes('failed to fetch') ||
-        msg.toLowerCase().includes('connection')) {
+      msg.toLowerCase().includes('failed to fetch') ||
+      msg.toLowerCase().includes('connection')) {
       this.showNetworkError(containerId);
       return;
     }
@@ -578,22 +578,22 @@ const AppState = {
   },
 
   extractJSON(rawText) {
-    try { return JSON.parse(rawText); } catch {}
+    try { return JSON.parse(rawText); } catch { }
 
     try {
       const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (fenceMatch) return JSON.parse(fenceMatch[1]);
-    } catch {}
+    } catch { }
 
     try {
       const jsonMatch = rawText.match(/\{[\s\S]*\}/);
       if (jsonMatch) return JSON.parse(jsonMatch[0]);
-    } catch {}
+    } catch { }
 
     throw new Error('Failed to parse JSON response. Raw output:\n' + rawText.substring(0, 500));
   },
 
-  async callGeminiAPI(userMessage, apiKey, customSystemPrompt = null, signal = null) {
+  async callGeminiAPI(userMessage, apiKey, signal = null) {
     if (!apiKey) {
       throw new Error('API key is required. Please set it in Settings.');
     }
@@ -614,8 +614,8 @@ const AppState = {
           headers: { 'Content-Type': 'application/json' },
           signal: controller.signal,
           body: JSON.stringify({
-            systemInstruction: {
-              parts: [{ text: customSystemPrompt || GeminiAPI.systemPrompt }]
+            system_instruction: {
+              parts: [{ text: GeminiAPI.systemPrompt }]
             },
             contents: [{ parts: [{ text: userMessage }] }],
             generationConfig: {
@@ -716,7 +716,7 @@ const OutputCard = {
       const label = item.label;
       const length = text.length;
       const pct = charLimit ? (length / charLimit) * 100 : 0;
-      
+
       let charCountClass = 'char-count-ok';
       if (pct > 100) {
         charCountClass = 'char-count-over';
@@ -738,7 +738,7 @@ const OutputCard = {
       `;
     }).join('');
 
-    const regenerateHTML = onRegenerate 
+    const regenerateHTML = onRegenerate
       ? '<button class="btn btn-ghost w-full mt-3">🔄 Regenerate</button>'
       : '';
 
@@ -796,7 +796,7 @@ const Toast = (() => {
       const toast = document.createElement('div');
       toast.className = 'toast';
       toast.textContent = message;
-      
+
       toastContainer.appendChild(toast);
       currentToast = toast;
 
@@ -891,7 +891,7 @@ const SettingsModule = {
     document.getElementById('save-profile-btn').addEventListener('click', () => this.saveProfile());
     document.getElementById('clear-profile-btn').addEventListener('click', () => this.clearProfile());
     document.getElementById('clear-all-btn').addEventListener('click', () => this.clearAllData());
-    
+
     // Clear error on focus
     document.getElementById('api-key-input').addEventListener('focus', () => ErrorHandler.clearFieldError('api-key-input'));
   },
@@ -899,7 +899,7 @@ const SettingsModule = {
   async testAPIConnection() {
     const apiKey = document.getElementById('api-key-input').value.trim();
     if (!ErrorHandler.validateRequired('api-key-input', 'API Key')) return;
-    
+
     const btn = document.getElementById('test-api-btn');
     btn.disabled = true;
     btn.textContent = 'Testing…';
@@ -917,7 +917,7 @@ const SettingsModule = {
   saveAPIKey() {
     const apiKey = document.getElementById('api-key-input').value.trim();
     if (!ErrorHandler.validateRequired('api-key-input', 'API Key')) return;
-    
+
     if (!apiKey.startsWith('AIza')) {
       ErrorHandler.showFieldError('api-key-input', 'Invalid key format (should start with "AIza")');
       return;
@@ -976,7 +976,7 @@ const SettingsModule = {
   showStatus(id, msg, type) {
     const el = document.getElementById(id);
     if (!el) return;
-    
+
     if (type === 'error') {
       const inputId = id === 'api-status' ? 'api-key-input' : null;
       if (inputId) {
@@ -1142,7 +1142,7 @@ const ReplyWriterModule = {
 
     const controller = new AbortController();
     ErrorHandler.showLoading('reply-output', 'Generating replies…', controller);
-    
+
     try {
       const result = await AppState.callGeminiAPI(this.buildPrompt(src, goal, angle), AppState.apiKey, controller.signal);
       if (!result) {
@@ -1357,6 +1357,223 @@ const BioBuilderModule = {
   }
 };
 
+// ─── Module Badge Definitions ─────────────────────────────────────────────
+
+const MODULE_BADGES = {
+  'tweet-generator': { label: 'Tweet', color: '#1D9BF0' },
+  'reply-writer':    { label: 'Reply', color: '#4CAF50' },
+  'content-planner': { label: 'Ideas', color: '#FF9800' },
+  'bio-builder':     { label: 'Bio',   color: '#9C27B0' }
+};
+
+// ─── History Module ────────────────────────────────────────────────────────
+
+const HistoryModule = {
+  /** Cached items for the current view cycle */
+  currentItems: [],
+
+  render() {
+    return `
+      <div class="module-history">
+        <div class="module-header">
+          <h2 class="module-title">History</h2>
+          <p class="module-description">Your last 20 generated outputs</p>
+        </div>
+        <div id="history-container"></div>
+      </div>
+    `;
+  },
+
+  init() {
+    this.loadHistory();
+  },
+
+  loadHistory() {
+    this.currentItems = StorageManager.loadHistory();
+    const container = document.getElementById('history-container');
+    if (!container) return;
+
+    if (!this.currentItems || this.currentItems.length === 0) {
+      container.innerHTML = this.renderEmptyState();
+      return;
+    }
+
+    container.innerHTML = this.renderHistoryList(this.currentItems);
+    this.bindListEvents();
+  },
+
+  renderEmptyState() {
+    return `
+      <div class="empty-state">
+        <span class="empty-state-icon" aria-hidden="true">📭</span>
+        <p class="empty-state-text">No history yet</p>
+        <p class="empty-state-hint">Generated content will appear here</p>
+      </div>
+    `;
+  },
+
+  renderHistoryList(items) {
+    const count = items.length;
+    const itemsHTML = items.map((item, index) => this.renderHistoryItem(item, index)).join('');
+    return `
+      <div class="history-actions">
+        <span class="history-count">${count} item${count !== 1 ? 's' : ''}</span>
+        <button id="clear-history-btn" class="btn btn-ghost btn-sm">Clear All</button>
+      </div>
+      <div id="history-list">
+        ${itemsHTML}
+      </div>
+    `;
+  },
+
+  renderHistoryItem(item, index) {
+    const badge   = this.getModuleBadge(item.module);
+    const timeStr = this.formatTimestamp(item.timestamp);
+    const preview = this.truncateText(item.content, 80);
+    return `
+      <div class="history-item" data-index="${index}" role="button" tabindex="0"
+           aria-label="${badge.label} generated ${timeStr}">
+        <div class="history-item-header">
+          <span class="history-badge" style="background: ${badge.color}">${badge.label}</span>
+          <span class="history-time">${timeStr}</span>
+        </div>
+        <p class="history-preview">${this.escapeHTML(preview)}</p>
+      </div>
+    `;
+  },
+
+  viewItem(index) {
+    const item = this.currentItems[index];
+    if (!item) return;
+
+    const badge    = this.getModuleBadge(item.module);
+    const timeStr  = this.formatTimestamp(item.timestamp);
+    const charCount = item.content.length;
+    const container = document.getElementById('history-container');
+
+    container.innerHTML = `
+      <div class="history-detail">
+        <button class="btn btn-ghost btn-sm mb-3" id="history-back-btn">← Back to list</button>
+        <div class="output-card">
+          <div class="output-card-header">
+            <span class="history-badge" style="background: ${badge.color}">${badge.label}</span>
+            <span class="output-card-meta">${charCount} chars · ${timeStr}</span>
+          </div>
+          <div class="output-card-content">${this.escapeHTML(item.content)}</div>
+          <div class="output-card-footer">
+            <button class="btn btn-secondary btn-sm copy-btn" id="history-copy-btn">📋 Copy</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('history-back-btn').addEventListener('click', () => this.backToList());
+    document.getElementById('history-copy-btn').addEventListener('click', () => this.copyToClipboard(item.content));
+  },
+
+  backToList() {
+    this.loadHistory();
+  },
+
+  clearHistory() {
+    const confirmed = confirm('Clear all history? This cannot be undone.');
+    if (!confirmed) return;
+    StorageManager.clearHistory();
+    this.loadHistory();
+  },
+
+  bindListEvents() {
+    // History item clicks (keyboard + pointer)
+    document.querySelectorAll('.history-item').forEach((el) => {
+      const open = () => {
+        const index = parseInt(el.dataset.index, 10);
+        this.viewItem(index);
+      };
+      el.addEventListener('click', open);
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+      });
+    });
+
+    // Clear all button
+    const clearBtn = document.getElementById('clear-history-btn');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => this.clearHistory());
+    }
+  },
+
+  // ─── Utility Methods ───────────────────────────────────────
+
+  /**
+   * Convert an ISO timestamp to a human-readable relative string.
+   * @param {string} isoString
+   * @returns {string}
+   */
+  formatTimestamp(isoString) {
+    if (!isoString) return 'Unknown';
+    const now     = new Date();
+    const then    = new Date(isoString);
+    const diffMs  = now - then;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay  = Math.floor(diffHour / 24);
+
+    if (diffSec < 60)    return 'Just now';
+    if (diffMin < 60)    return `${diffMin} min ago`;
+    if (diffHour < 24)   return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
+    if (diffDay === 1)   return 'Yesterday';
+    if (diffDay < 7)     return `${diffDay} days ago`;
+    return then.toLocaleDateString();
+  },
+
+  /**
+   * Truncate text to maxLength chars with ellipsis.
+   * @param {string} text
+   * @param {number} maxLength
+   * @returns {string}
+   */
+  truncateText(text, maxLength = 80) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trimEnd() + '\u2026';
+  },
+
+  /**
+   * Return the badge config for a module name.
+   * @param {string} moduleName
+   * @returns {{ label: string, color: string }}
+   */
+  getModuleBadge(moduleName) {
+    return MODULE_BADGES[moduleName] ?? { label: 'Other', color: '#666666' };
+  },
+
+  /**
+   * Escape HTML entities to prevent XSS.
+   * @param {string} str
+   * @returns {string}
+   */
+  escapeHTML(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  },
+
+  /**
+   * Copy text to clipboard and show a toast.
+   * @param {string} text
+   */
+  async copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      Toast.show('Copied to clipboard!');
+    } catch {
+      alert('Failed to copy. Please copy manually.');
+    }
+  }
+};
+
 const NavigationManager = {
   currentModule: 'tweet-generator',
 
@@ -1420,6 +1637,7 @@ const NavigationManager = {
       'reply-writer': ReplyWriterModule,
       'content-planner': ContentPlannerModule,
       'bio-builder': BioBuilderModule,
+      'history': HistoryModule,
       'settings': SettingsModule
     };
 
