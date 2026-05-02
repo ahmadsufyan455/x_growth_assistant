@@ -40,14 +40,10 @@ x_growth/
 │   └── styles.css      # All styles and design tokens
 ├── js/
 │   └── app.js          # Application logic and modules
-├── README.md           # This file
-└── .sisyphus/
-    └── specs/          # Implementation specifications
+└── README.md           # This file
 ```
 
-## Specifications
 
-Detailed implementation specs are available in `.sisyphus/specs/`, covering everything from architecture to specific feature implementations like the `Thread Formatter`, `History Feature`, and `Markdown Export`.
 
 ## Browser Requirements
 
