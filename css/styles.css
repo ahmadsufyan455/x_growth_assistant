@@ -707,3 +707,175 @@ a.text-accent:hover {
     font-size: 14px;
   }
 }
+
+/* ─── Field Validation ──────────────────────────────────── */
+
+/* Red border on invalid input */
+.input-error {
+  border-color: var(--error-color) !important;
+  box-shadow: 0 0 0 3px rgba(244, 67, 54, 0.1) !important;
+}
+
+/* Error message below field */
+.field-error {
+  display: block;
+  color: var(--error-color);
+  font-size: 13px;
+  font-weight: 500;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.field-error.hidden {
+  display: none;
+}
+
+/* ─── API Error Card ────────────────────────────────────── */
+
+.error-card {
+  background: rgba(244, 67, 54, 0.08);
+  border: 1px solid rgba(244, 67, 54, 0.25);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.error-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.error-card-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.error-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #FF6B6B;
+  flex: 1;
+}
+
+.error-card-message {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.error-dismiss {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  line-height: 1;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.error-dismiss:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Raw response block (parse errors) */
+.error-card-raw {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  max-height: 300px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* ─── API Key Banner ────────────────────────────────────── */
+
+.api-key-banner {
+  background: rgba(29, 155, 240, 0.08);
+  border: 1px solid rgba(29, 155, 240, 0.25);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+}
+
+.api-key-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.api-key-banner-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.api-key-banner-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.api-key-banner-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.api-key-banner-action {
+  flex-shrink: 0;
+}
+
+/* Responsive: stack banner on small screens */
+@media (max-width: 600px) {
+  .api-key-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .api-key-banner-action {
+    width: 100%;
+  }
+}
+
+/* ─── Loading with Cancel ───────────────────────────────── */
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl);
+  color: var(--text-secondary);
+}
+
+.loading-message {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.loading-cancel {
+  margin-top: var(--spacing-sm);
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+.loading-cancel:hover {
+  color: var(--error-color);
+}

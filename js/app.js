@@ -18,6 +18,376 @@ const StorageKeys = {
   SETTINGS: 'xgrowth_settings'
 };
 
+/**
+ * Centralized error message mapping.
+ * Keys are HTTP status codes (number) or named error types (string).
+ * Values are user-friendly messages displayed in error cards.
+ */
+const ERROR_MESSAGES = {
+  400: 'Bad request. Check your input and try again.',
+  401: 'Invalid API key. Please check your key in Settings.',
+  403: 'API quota exceeded. Check your Google AI Studio usage.',
+  429: 'Too many requests. Please wait a moment and try again.',
+  500: 'Google API server error. Please try again later.',
+  502: 'Google API is temporarily unavailable. Please try again later.',
+  503: 'Google API is temporarily unavailable. Please try again later.',
+  timeout: 'Request timed out after 8 seconds. Please try again.',
+  network: 'Network error. Check your internet connection.',
+  parse: 'Failed to parse AI response. Raw output shown below.',
+  empty: 'Empty response from API. Please try again.',
+  cancelled: null  // No message shown for user-initiated cancel
+};
+
+/**
+ * Centralized error handling utility.
+ * All modules delegate error display to this object.
+ * Methods are stateless — they operate on DOM elements by ID.
+ */
+const ErrorHandler = {
+
+  // ─── Field Validation ──────────────────────────────────────
+
+  /**
+   * Validate that a field is not empty.
+   * @param {string} fieldId - The DOM id of the input/textarea element
+   * @param {string} fieldName - Human-readable field name for the error message
+   * @returns {boolean} true if valid, false if empty
+   */
+  validateRequired(fieldId, fieldName) {
+    const field = document.getElementById(fieldId);
+    if (!field) return false;
+
+    const value = field.value.trim();
+    if (!value) {
+      this.showFieldError(fieldId, `${fieldName} is required.`);
+      return false;
+    }
+
+    this.clearFieldError(fieldId);
+    return true;
+  },
+
+  /**
+   * Show inline error on a specific field.
+   * Adds .input-error class to the field and populates the .field-error span.
+   * @param {string} fieldId - The DOM id of the input/textarea element
+   * @param {string} message - Error message to display
+   */
+  showFieldError(fieldId, message) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    // Add red border
+    field.classList.add('input-error');
+
+    // Find or create the error message element
+    let errorEl = document.getElementById(`${fieldId}-error`);
+    if (!errorEl) {
+      errorEl = document.createElement('span');
+      errorEl.id = `${fieldId}-error`;
+      errorEl.className = 'field-error';
+      field.parentNode.appendChild(errorEl);
+    }
+
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+
+    // Auto-clear on focus
+    field.addEventListener('focus', () => {
+      this.clearFieldError(fieldId);
+    }, { once: true });
+  },
+
+  /**
+   * Clear inline error from a specific field.
+   * Removes .input-error class and hides the .field-error span.
+   * @param {string} fieldId - The DOM id of the input/textarea element
+   */
+  clearFieldError(fieldId) {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    field.classList.remove('input-error');
+
+    const errorEl = document.getElementById(`${fieldId}-error`);
+    if (errorEl) {
+      errorEl.textContent = '';
+      errorEl.classList.add('hidden');
+    }
+  },
+
+  // ─── API Key Check ─────────────────────────────────────────
+
+  /**
+   * Check if API key is set. If not, show a banner in the given container
+   * and optionally navigate to Settings.
+   * @param {string} [containerId] - Optional container to show the banner in
+   * @returns {boolean} true if API key exists, false if missing
+   */
+  requireAPIKey(containerId) {
+    if (AppState.apiKey) return true;
+
+    if (containerId) {
+      const container = document.getElementById(containerId);
+      if (container) {
+        container.innerHTML = `
+          <div class="api-key-banner">
+            <div class="api-key-banner-content">
+              <span class="api-key-banner-icon">🔑</span>
+              <div>
+                <p class="api-key-banner-title">API Key Required</p>
+                <p class="api-key-banner-message">
+                  Please set your Gemini API key in Settings to use this feature.
+                </p>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm api-key-banner-action"
+                    onclick="NavigationManager.switchModule('settings')">
+              Go to Settings
+            </button>
+          </div>
+        `;
+      }
+    }
+
+    return false;
+  },
+
+  // ─── API Error Display ─────────────────────────────────────
+
+  /**
+   * Display a styled API error card in the given container.
+   * Parses the error to determine the appropriate user-friendly message.
+   * @param {string} containerId - The DOM id of the output container
+   * @param {Error|string} error - The error object or message string
+   */
+  showAPIError(containerId, error) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const message = typeof error === 'string' ? error : error.message || 'An unexpected error occurred.';
+
+    // Try to extract HTTP status code from error message for icon selection
+    const isAuthError = message.toLowerCase().includes('api key') ||
+                        message.toLowerCase().includes('unauthorized');
+
+    container.innerHTML = `
+      <div class="error-card">
+        <div class="error-card-header">
+          <span class="error-card-icon">${isAuthError ? '🔑' : '⚠️'}</span>
+          <span class="error-card-title">API Error</span>
+          <button class="btn btn-icon error-dismiss"
+                  onclick="ErrorHandler.dismiss('${containerId}')"
+                  aria-label="Dismiss error">✕</button>
+        </div>
+        <p class="error-card-message">${this._escapeHTML(message)}</p>
+        ${isAuthError ? `
+          <button class="btn btn-secondary btn-sm mt-3"
+                  onclick="NavigationManager.switchModule('settings')">
+            Go to Settings
+          </button>
+        ` : ''}
+      </div>
+    `;
+  },
+
+  /**
+   * Display a JSON parse failure card with the raw response for debugging.
+   * @param {string} containerId - The DOM id of the output container
+   * @param {string} rawResponse - The raw API response text that failed to parse
+   */
+  showParseError(containerId, rawResponse) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const truncated = rawResponse.length > 2000
+      ? rawResponse.substring(0, 2000) + '\n\n... [truncated]'
+      : rawResponse;
+
+    container.innerHTML = `
+      <div class="error-card">
+        <div class="error-card-header">
+          <span class="error-card-icon">🔧</span>
+          <span class="error-card-title">Parse Error</span>
+          <button class="btn btn-icon error-dismiss"
+                  onclick="ErrorHandler.dismiss('${containerId}')"
+                  aria-label="Dismiss error">✕</button>
+        </div>
+        <p class="error-card-message">${ERROR_MESSAGES.parse}</p>
+        <pre class="error-card-raw">${this._escapeHTML(truncated)}</pre>
+      </div>
+    `;
+  },
+
+  /**
+   * Display a timeout error card.
+   * @param {string} containerId - The DOM id of the output container
+   */
+  showTimeoutError(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="error-card">
+        <div class="error-card-header">
+          <span class="error-card-icon">⏱️</span>
+          <span class="error-card-title">Request Timeout</span>
+          <button class="btn btn-icon error-dismiss"
+                  onclick="ErrorHandler.dismiss('${containerId}')"
+                  aria-label="Dismiss error">✕</button>
+        </div>
+        <p class="error-card-message">${ERROR_MESSAGES.timeout}</p>
+      </div>
+    `;
+  },
+
+  /**
+   * Display a network error card.
+   * @param {string} containerId - The DOM id of the output container
+   */
+  showNetworkError(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.innerHTML = `
+      <div class="error-card">
+        <div class="error-card-header">
+          <span class="error-card-icon">📡</span>
+          <span class="error-card-title">Connection Error</span>
+          <button class="btn btn-icon error-dismiss"
+                  onclick="ErrorHandler.dismiss('${containerId}')"
+                  aria-label="Dismiss error">✕</button>
+        </div>
+        <p class="error-card-message">${ERROR_MESSAGES.network}</p>
+      </div>
+    `;
+  },
+
+  // ─── Loading State ─────────────────────────────────────────
+
+  /**
+   * Show a loading indicator with optional cancel button.
+   * @param {string} containerId - The DOM id of the output container
+   * @param {string} message - Loading message (e.g., "Generating tweets...")
+   * @param {AbortController} [abortController] - Optional controller for cancel
+   */
+  showLoading(containerId, message, abortController) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const cancelBtnId = `${containerId}-cancel-btn`;
+
+    container.innerHTML = `
+      <div class="loading">
+        <div class="loading-dots">
+          <div class="loading-dot"></div>
+          <div class="loading-dot"></div>
+          <div class="loading-dot"></div>
+        </div>
+        <span class="loading-message">${this._escapeHTML(message)}</span>
+        ${abortController ? `
+          <button id="${cancelBtnId}"
+                  class="btn btn-ghost btn-sm loading-cancel">
+            Cancel
+          </button>
+        ` : ''}
+      </div>
+    `;
+
+    // Wire up cancel button
+    if (abortController) {
+      const cancelBtn = document.getElementById(cancelBtnId);
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          abortController.abort();
+          this.dismiss(containerId);
+        });
+      }
+    }
+  },
+
+  // ─── Utility Methods ───────────────────────────────────────
+
+  /**
+   * Map an HTTP status code to a user-friendly error message.
+   * @param {number} statusCode - HTTP status code
+   * @returns {string} User-friendly error message
+   */
+  getErrorMessage(statusCode) {
+    return ERROR_MESSAGES[statusCode]
+      || ERROR_MESSAGES[Math.floor(statusCode / 100) * 100]
+      || `Unexpected error (code ${statusCode}). Please try again.`;
+  },
+
+  /**
+   * Clear the contents of a container (dismiss an error or loading state).
+   * @param {string} containerId - The DOM id of the container to clear
+   */
+  dismiss(containerId) {
+    const container = document.getElementById(containerId);
+    if (container) {
+      container.innerHTML = '';
+    }
+  },
+
+  /**
+   * Route an error to the appropriate display method.
+   * Inspects the error message/type to determine which handler to call.
+   * This is the primary entry point for catch blocks in modules.
+   * @param {string} containerId - The DOM id of the output container
+   * @param {Error} error - The caught error
+   */
+  handleError(containerId, error) {
+    const msg = error.message || '';
+
+    // User cancelled — do nothing
+    if (error.name === 'AbortError' && msg !== 'Request timed out. Please try again.') {
+      this.dismiss(containerId);
+      return;
+    }
+
+    // Timeout
+    if (msg.toLowerCase().includes('timed out') || msg.toLowerCase().includes('timeout')) {
+      this.showTimeoutError(containerId);
+      return;
+    }
+
+    // Network error
+    if (msg.toLowerCase().includes('network') ||
+        msg.toLowerCase().includes('failed to fetch') ||
+        msg.toLowerCase().includes('connection')) {
+      this.showNetworkError(containerId);
+      return;
+    }
+
+    // Parse error with raw response
+    if (msg.toLowerCase().includes('failed to parse json')) {
+      // Extract raw output from the error message (format: "Failed to parse JSON response. Raw output:\n...")
+      const rawStart = msg.indexOf('Raw output:\n');
+      if (rawStart !== -1) {
+        const rawResponse = msg.substring(rawStart + 'Raw output:\n'.length);
+        this.showParseError(containerId, rawResponse);
+        return;
+      }
+    }
+
+    // Generic API error
+    this.showAPIError(containerId, error);
+  },
+
+  /**
+   * Escape HTML entities to prevent XSS in error messages.
+   * @param {string} str - Raw string
+   * @returns {string} HTML-safe string
+   * @private
+   */
+  _escapeHTML(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+};
+
 const StorageManager = {
   saveAPIKey(apiKey) {
     try {
@@ -223,13 +593,18 @@ const AppState = {
     throw new Error('Failed to parse JSON response. Raw output:\n' + rawText.substring(0, 500));
   },
 
-  async callGeminiAPI(userMessage, apiKey, customSystemPrompt = null) {
+  async callGeminiAPI(userMessage, apiKey, customSystemPrompt = null, signal = null) {
     if (!apiKey) {
       throw new Error('API key is required. Please set it in Settings.');
     }
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), GeminiAPI.timeout);
+
+    // If external signal provided, forward its abort to our controller
+    if (signal) {
+      signal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
 
     try {
       const response = await fetch(
@@ -269,6 +644,11 @@ const AppState = {
     } catch (error) {
       clearTimeout(timeoutId);
       if (error.name === 'AbortError') {
+        // User-initiated cancel (external signal) - return null silently
+        if (signal?.aborted) {
+          return null;
+        }
+        // Timeout - throw error
         throw new Error('Request timed out. Please try again.');
       }
       throw error;
@@ -511,22 +891,23 @@ const SettingsModule = {
     document.getElementById('save-profile-btn').addEventListener('click', () => this.saveProfile());
     document.getElementById('clear-profile-btn').addEventListener('click', () => this.clearProfile());
     document.getElementById('clear-all-btn').addEventListener('click', () => this.clearAllData());
+    
+    // Clear error on focus
+    document.getElementById('api-key-input').addEventListener('focus', () => ErrorHandler.clearFieldError('api-key-input'));
   },
 
   async testAPIConnection() {
     const apiKey = document.getElementById('api-key-input').value.trim();
-    if (!apiKey) {
-      this.showStatus('api-status', 'Please enter an API key', 'error');
-      return;
-    }
+    if (!ErrorHandler.validateRequired('api-key-input', 'API Key')) return;
+    
     const btn = document.getElementById('test-api-btn');
     btn.disabled = true;
-    btn.textContent = 'Testing\u2026';
+    btn.textContent = 'Testing…';
     try {
       await callGeminiAPI('Return JSON: {"status":"ok"}', apiKey);
-      this.showStatus('api-status', '\u2713 Connected successfully!', 'success');
+      this.showStatus('api-status', '✓ Connected successfully!', 'success');
     } catch (err) {
-      this.showStatus('api-status', `\u2717 ${err.message}`, 'error');
+      this.showStatus('api-status', `✗ ${err.message}`, 'error');
     } finally {
       btn.disabled = false;
       btn.textContent = 'Test Connection';
@@ -535,19 +916,17 @@ const SettingsModule = {
 
   saveAPIKey() {
     const apiKey = document.getElementById('api-key-input').value.trim();
-    if (!apiKey) {
-      this.showStatus('api-status', 'Please enter an API key', 'error');
-      return;
-    }
+    if (!ErrorHandler.validateRequired('api-key-input', 'API Key')) return;
+    
     if (!apiKey.startsWith('AIza')) {
-      this.showStatus('api-status', 'Invalid key format (should start with "AIza")', 'error');
+      ErrorHandler.showFieldError('api-key-input', 'Invalid key format (should start with "AIza")');
       return;
     }
     if (StorageManager.saveAPIKey(apiKey)) {
       AppState.apiKey = apiKey;
-      this.showStatus('api-status', '\u2713 API key saved', 'success');
+      this.showStatus('api-status', '✓ API key saved', 'success');
     } else {
-      this.showStatus('api-status', '\u2717 Failed to save', 'error');
+      this.showStatus('api-status', '✗ Failed to save', 'error');
     }
   },
 
@@ -595,12 +974,23 @@ const SettingsModule = {
   },
 
   showStatus(id, msg, type) {
-    const cls = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-info';
-    document.getElementById(id).innerHTML = `<div class="alert ${cls}">${msg}</div>`;
-    setTimeout(() => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = '';
-    }, 5000);
+    const el = document.getElementById(id);
+    if (!el) return;
+    
+    if (type === 'error') {
+      const inputId = id === 'api-status' ? 'api-key-input' : null;
+      if (inputId) {
+        ErrorHandler.showFieldError(inputId, msg);
+      } else {
+        const cls = 'alert-error';
+        el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+        setTimeout(() => { if (el) el.innerHTML = ''; }, 5000);
+      }
+    } else {
+      const cls = type === 'success' ? 'alert-success' : 'alert-info';
+      el.innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+      setTimeout(() => { if (el) el.innerHTML = ''; }, 5000);
+    }
   }
 };
 
@@ -647,6 +1037,7 @@ const TweetGeneratorModule = {
 
   init() {
     document.getElementById('generate-tweet-btn').addEventListener('click', () => this.generate());
+    document.getElementById('tweet-topic').addEventListener('focus', () => ErrorHandler.clearFieldError('tweet-topic'));
     if (this._pendingTopic) {
       document.getElementById('tweet-topic').value = this._pendingTopic;
       this._pendingTopic = null;
@@ -658,17 +1049,21 @@ const TweetGeneratorModule = {
     const tone = document.getElementById('tweet-tone').value;
     const format = document.getElementById('tweet-format').value;
 
-    if (!topic) { alert('Please enter a topic'); return; }
-    if (!AppState.apiKey) { alert('Please set your API key in Settings'); return; }
+    if (!ErrorHandler.validateRequired('tweet-topic', 'Topic')) return;
+    if (!ErrorHandler.requireAPIKey('tweet-output')) return;
 
-    document.getElementById('tweet-output').innerHTML = loadingHTML('Generating tweets\u2026');
+    const controller = new AbortController();
+    ErrorHandler.showLoading('tweet-output', 'Generating tweets…', controller);
     try {
-      const result = await callGeminiAPI(this.buildPrompt(topic, tone, format), AppState.apiKey);
+      const result = await AppState.callGeminiAPI(this.buildPrompt(topic, tone, format), AppState.apiKey, controller.signal);
+      if (!result) {
+        ErrorHandler.dismiss('tweet-output');
+        return;
+      }
       this.renderOutput(result.variations);
       AppState.addToHistory({ module: 'tweet-generator', content: result.variations[0].text, metadata: { tone, format } });
     } catch (err) {
-      document.getElementById('tweet-output').innerHTML =
-        `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(err.message)}</div>`;
+      ErrorHandler.handleError('tweet-output', err);
     }
   },
 
@@ -734,6 +1129,7 @@ const ReplyWriterModule = {
 
   init() {
     document.getElementById('generate-reply-btn').addEventListener('click', () => this.generate());
+    document.getElementById('source-tweet').addEventListener('focus', () => ErrorHandler.clearFieldError('source-tweet'));
   },
 
   async generate() {
@@ -741,17 +1137,22 @@ const ReplyWriterModule = {
     const goal = document.getElementById('reply-goal').value;
     const angle = document.getElementById('reply-angle').value.trim();
 
-    if (!src) { alert('Please paste the tweet you want to reply to'); return; }
-    if (!AppState.apiKey) { alert('Please set your API key in Settings'); return; }
+    if (!ErrorHandler.validateRequired('source-tweet', 'Source tweet')) return;
+    if (!ErrorHandler.requireAPIKey('reply-output')) return;
 
-    document.getElementById('reply-output').innerHTML = loadingHTML('Generating replies\u2026');
+    const controller = new AbortController();
+    ErrorHandler.showLoading('reply-output', 'Generating replies…', controller);
+    
     try {
-      const result = await callGeminiAPI(this.buildPrompt(src, goal, angle), AppState.apiKey);
+      const result = await AppState.callGeminiAPI(this.buildPrompt(src, goal, angle), AppState.apiKey, controller.signal);
+      if (!result) {
+        ErrorHandler.dismiss('reply-output');
+        return;
+      }
       this.renderOutput(result.replies);
       AppState.addToHistory({ module: 'reply-writer', content: result.replies[0].text, metadata: { goal } });
     } catch (err) {
-      document.getElementById('reply-output').innerHTML =
-        `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(err.message)}</div>`;
+      ErrorHandler.handleError('reply-output', err);
     }
   },
 
@@ -812,17 +1213,21 @@ const ContentPlannerModule = {
   },
 
   async generate() {
-    if (!AppState.apiKey) { alert('Please set your API key in Settings'); return; }
+    if (!ErrorHandler.requireAPIKey('planner-output')) return;
     const ctx = document.getElementById('planner-context').value.trim();
     const focus = document.getElementById('planner-focus').value;
 
-    document.getElementById('planner-output').innerHTML = loadingHTML('Building your content calendar\u2026');
+    const controller = new AbortController();
+    ErrorHandler.showLoading('planner-output', 'Building your content calendar…', controller);
     try {
-      const result = await callGeminiAPI(this.buildPrompt(ctx, focus), AppState.apiKey);
+      const result = await AppState.callGeminiAPI(this.buildPrompt(ctx, focus), AppState.apiKey, controller.signal);
+      if (!result) {
+        ErrorHandler.dismiss('planner-output');
+        return;
+      }
       this.renderOutput(result.ideas);
     } catch (err) {
-      document.getElementById('planner-output').innerHTML =
-        `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(err.message)}</div>`;
+      ErrorHandler.handleError('planner-output', err);
     }
   },
 
@@ -903,6 +1308,8 @@ const BioBuilderModule = {
 
   init() {
     document.getElementById('generate-bio-btn').addEventListener('click', () => this.generate());
+    document.getElementById('bio-role').addEventListener('focus', () => ErrorHandler.clearFieldError('bio-role'));
+    document.getElementById('bio-building').addEventListener('focus', () => ErrorHandler.clearFieldError('bio-building'));
   },
 
   async generate() {
@@ -911,20 +1318,24 @@ const BioBuilderModule = {
     const knownFor = document.getElementById('bio-known-for').value.trim();
     const personal = document.getElementById('bio-personal').value.trim();
 
-    if (!role) { alert('Please enter your role & experience'); return; }
-    if (!building) { alert('Please enter what you\'re building'); return; }
-    if (!AppState.apiKey) { alert('Please set your API key in Settings'); return; }
+    if (!ErrorHandler.validateRequired('bio-role', 'Role & experience')) return;
+    if (!ErrorHandler.validateRequired('bio-building', 'What you\'re building')) return;
+    if (!ErrorHandler.requireAPIKey('bio-output')) return;
 
     this.currentInputs = { role, building, knownFor, personal };
 
-    document.getElementById('bio-output').innerHTML = loadingHTML('Generating bios\u2026');
+    const controller = new AbortController();
+    ErrorHandler.showLoading('bio-output', 'Generating bios…', controller);
     try {
-      const result = await callGeminiAPI(this.buildPrompt(role, building, knownFor, personal), AppState.apiKey);
+      const result = await AppState.callGeminiAPI(this.buildPrompt(role, building, knownFor, personal), AppState.apiKey, controller.signal);
+      if (!result) {
+        ErrorHandler.dismiss('bio-output');
+        return;
+      }
       this.renderOutput(result.bios);
       AppState.addToHistory({ module: 'bio-builder', content: result.bios[0].text, metadata: {} });
     } catch (err) {
-      document.getElementById('bio-output').innerHTML =
-        `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(err.message)}</div>`;
+      ErrorHandler.handleError('bio-output', err);
     }
   },
 
