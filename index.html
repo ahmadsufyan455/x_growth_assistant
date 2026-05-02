@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AI-powered X content assistant for software engineers">
+  <title>X Growth Assistant</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      /* Colors */
+      --bg-primary: #0A0A0A;
+      --bg-secondary: #111111;
+      --bg-tertiary: #1A1A1A;
+      --text-primary: #FFFFFF;
+      --text-secondary: #A0A0A0;
+      --text-tertiary: #666666;
+      --accent-primary: #1D9BF0;
+      --accent-hover: #1A8CD8;
+      --border-color: #2A2A2A;
+      --error-color: #F44336;
+      --success-color: #4CAF50;
+      
+      /* Typography */
+      --font-ui: 'Syne', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      
+      /* Spacing */
+      --spacing-xs: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --spacing-xl: 32px;
+      
+      /* Border Radius */
+      --radius-sm: 4px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      
+      /* Transitions */
+      --transition-fast: 150ms ease;
+      --transition-normal: 250ms ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-ui);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <!-- Application structure will be built here -->
+  </div>
+  
+  <script>
+    // Application State
+    const AppState = {
+      apiKey: null,
+      nicheProfile: null,
+      currentModule: 'tweet-generator',
+      history: [],
+      
+      init() {
+        this.loadFromStorage();
+        this.setupEventListeners();
+        this.render();
+      },
+      
+      loadFromStorage() {
+        this.apiKey = localStorage.getItem('xgrowth_api_key');
+        this.nicheProfile = JSON.parse(localStorage.getItem('xgrowth_niche') || 'null');
+        this.history = JSON.parse(localStorage.getItem('xgrowth_history') || '[]');
+      },
+      
+      saveToStorage() {
+        if (this.apiKey) localStorage.setItem('xgrowth_api_key', this.apiKey);
+        if (this.nicheProfile) localStorage.setItem('xgrowth_niche', JSON.stringify(this.nicheProfile));
+        localStorage.setItem('xgrowth_history', JSON.stringify(this.history));
+      },
+      
+      setupEventListeners() {
+        // Will be populated by module specs
+      },
+      
+      render() {
+        // Will be populated by layout spec
+      }
+    };
+
+    // Initialize on DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
+      AppState.init();
+    });
+  </script>
+</body>
+</html>
