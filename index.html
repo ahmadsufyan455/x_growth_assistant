@@ -69,6 +69,19 @@
   </div>
   
   <script>
+    // Gemini API Configuration
+    const GeminiAPI = {
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/models',
+      model: 'gemini-2.5-flash',
+      maxOutputTokens: 1024,
+      timeout: 8000,
+      
+      systemPrompt: `You are a personal branding expert for software engineers building in public on X.
+The user is a software engineer transitioning to solopreneur, focused on AI and indie hacking.
+Write content that feels authentic, smart, and human.
+No hashtags. Minimal emojis. Engineer voice. Return only raw JSON.`
+    }
+
     // Application State
     const AppState = {
       apiKey: null,
@@ -93,6 +106,107 @@
         if (this.nicheProfile) localStorage.setItem('xgrowth_niche', JSON.stringify(this.nicheProfile));
         localStorage.setItem('xgrowth_history', JSON.stringify(this.history));
       },
+
+      // Gemini API - JSON Extraction
+      extractJSON(rawText) {
+        // Strategy 1: Direct parse
+        try {
+          return JSON.parse(rawText)
+        } catch (e) {}
+
+        // Strategy 2: Strip markdown code fences
+        try {
+          const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+          if (fenceMatch) {
+            return JSON.parse(fenceMatch[1])
+          }
+        } catch (e) {}
+
+        // Strategy 3: Extract JSON object with regex
+        try {
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+          if (jsonMatch) {
+            return JSON.parse(jsonMatch[0])
+          }
+        } catch (e) {}
+
+        // All strategies failed
+        throw new Error('Failed to parse JSON response. Raw output:\n' + rawText.substring(0, 500))
+      },
+
+      // Gemini API - Core API Call
+      async callGeminiAPI(userMessage, apiKey, customSystemPrompt = null) {
+        if (!apiKey) {
+          throw new Error('API key is required. Please set it in Settings.')
+        }
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), GeminiAPI.timeout)
+
+        try {
+          const response = await fetch(`${GeminiAPI.baseURL}/${GeminiAPI.model}:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              systemInstruction: {
+                parts: [{ text: customSystemPrompt || GeminiAPI.systemPrompt }]
+              },
+              contents: [{
+                parts: [{ text: userMessage }]
+              }],
+              generationConfig: {
+                maxOutputTokens: GeminiAPI.maxOutputTokens,
+                temperature: 0.9,
+                topP: 0.95,
+                topK: 40
+              },
+              thinkingConfig: {
+                thinkingBudget: 0
+              }
+            })
+          })
+
+          clearTimeout(timeoutId)
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(this.parseAPIError(response.status, errorData))
+          }
+
+          const data = await response.json()
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text
+
+          if (!rawText) {
+            throw new Error('Empty response from API')
+          }
+
+          return this.extractJSON(rawText)
+        } catch (error) {
+          clearTimeout(timeoutId)
+          if (error.name === 'AbortError') {
+            throw new Error('Request timed out. Please try again.')
+          }
+          throw error
+        }
+      },
+
+      // Gemini API - Usage Example
+      async generateTweet(topic, tone, format) {
+        const userMessage = `Generate 2 tweet variations about: ${topic}
+Tone: ${tone}
+Format: ${format}
+
+Return JSON: { "variations": [{ "label": "Variation 1", "text": "..." }, { "label": "Variation 2", "text": "..." }] }`;
+
+        try {
+          const result = await this.callGeminiAPI(userMessage, this.apiKey);
+          return result.variations;
+        } catch (error) {
+          console.error('Tweet generation failed:', error);
+          throw error;
+        }
+      },
       
       setupEventListeners() {
         // Will be populated by module specs
@@ -100,6 +214,36 @@
       
       render() {
         // Will be populated by layout spec
+      },
+
+      // Gemini API - Error Message Mapping
+      parseAPIError(statusCode, errorData) {
+        const errorMessage = errorData?.error?.message || '';
+        
+        switch (statusCode) {
+          case 400:
+            if (errorMessage.includes('API_KEY_INVALID')) {
+              return 'Invalid API key. Please check your key in Settings.';
+            }
+            return `Bad request: ${errorMessage}`;
+            
+          case 401:
+            return 'Unauthorized. Please check your API key.';
+            
+          case 403:
+            return 'Access forbidden. Your API key may not have access to this model.';
+            
+          case 429:
+            return 'Rate limit exceeded. Please wait a moment and try again.';
+            
+          case 500:
+          case 502:
+          case 503:
+            return 'Google API is temporarily unavailable. Please try again.';
+            
+          default:
+            return `API error (${statusCode}): ${errorMessage || 'Unknown error'}`;
+        }
       }
     };
 
