@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "skills": {
+    "css": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "css/SKILL.md",
+      "computedHash": "80c477418be4bdd2d102ba5a71760125a9c1925292f5b3c208ee56ab9e6e3cc2"
+    },
+    "html": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "html/SKILL.md",
+      "computedHash": "3cdff568d692ae5dd1adebfbbcae39f07eaf27e6a578be5de9a4549ac295a804"
+    },
+    "modern-javascript-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/javascript-typescript/skills/modern-javascript-patterns/SKILL.md",
+      "computedHash": "0029f68d5b92753960cf57c00da77913973507350dad148acaa46313691a509a"
+    }
+  }
+}

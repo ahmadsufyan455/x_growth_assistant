@@ -1,6 +1,9 @@
 # Sisyphus AI working directory
 .sisyphus/
 
+# Playwright MCP artifacts
+.playwright-mcp/
+
 # Dependencies
 node_modules/
 npm-debug.log*
