@@ -16,9 +16,7 @@ AI-powered X content assistant for software engineers. Generate engaging tweets,
 
 ## Development
 
-This is a single-file web application designed for maximum simplicity:
-
-- All HTML, CSS, and JavaScript are in `index.html`
+- Separated HTML, CSS, and JavaScript into dedicated files
 - No npm packages or dependencies
 - No build tools or bundlers
 - Works directly in modern browsers (Chrome, Firefox, Safari)
@@ -27,7 +25,11 @@ This is a single-file web application designed for maximum simplicity:
 
 ```
 x_growth/
-├── index.html          # Main application file
+├── index.html          # Semantic HTML markup
+├── css/
+│   └── styles.css      # All styles and design tokens
+├── js/
+│   └── app.js          # Application logic and modules
 ├── README.md           # This file
 └── .sisyphus/
     └── specs/          # Implementation specifications
