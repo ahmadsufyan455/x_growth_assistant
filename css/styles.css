@@ -1034,3 +1034,112 @@ a.text-accent:hover {
   }
 }
 
+/* ─── Thread Formatter ──────────────────────────────────── */
+
+/* Thread Container */
+.thread-container {
+  margin-top: var(--spacing-md);
+}
+
+.thread-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.thread-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Thread Tweet Layout */
+.thread-tweets {
+  display: flex;
+  flex-direction: column;
+}
+
+.thread-tweet {
+  display: flex;
+  gap: var(--spacing-md);
+}
+
+/* Thread Connector (number + vertical line) */
+.thread-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 32px;
+  flex-shrink: 0;
+}
+
+.thread-number {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-primary);
+  white-space: nowrap;
+}
+
+.thread-line {
+  flex: 1;
+  width: 2px;
+  background: var(--border-color);
+  margin: 4px 0;
+  min-height: 16px;
+}
+
+.thread-tweet-last .thread-line {
+  display: none;
+}
+
+/* Tweet Content Card */
+.thread-tweet-content {
+  flex: 1;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.thread-tweet-last .thread-tweet-content {
+  margin-bottom: 0;
+}
+
+.thread-tweet-text {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Tweet Footer (char count + copy button) */
+.thread-tweet-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--border-color);
+}
+
+.thread-char-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* Character Count Color Coding */
+.char-ok {
+  color: var(--success-color, #4CAF50);
+}
+
+.char-warn {
+  color: #FFB74D;
+}
+
+.char-over {
+  color: var(--error-color, #EF5350);
+}

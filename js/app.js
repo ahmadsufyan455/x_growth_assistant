@@ -994,8 +994,191 @@ const SettingsModule = {
   }
 };
 
+const ThreadFormatter = {
+  /**
+   * Parse thread text into an array of tweet objects.
+   * Splits on numbered patterns like "1/ ", "2/ ", etc.
+   * @param {string} text - Raw thread text from API
+   * @returns {Array<{number: number, text: string}>}
+   */
+  parseThread(text) {
+    if (!text || typeof text !== 'string') return [];
+
+    // Split on numbered tweet pattern: "1/ ", "2/ ", etc.
+    // Handles optional newline before the number
+    const parts = text.split(/\n?(\d+)\/\s*/);
+
+    // parts array: ['', '1', 'tweet text...', '2', 'tweet text...', ...]
+    // First element is empty or preamble text (discard if empty)
+    const tweets = [];
+
+    for (let i = 1; i < parts.length; i += 2) {
+      const num = parseInt(parts[i], 10);
+      const tweetText = (parts[i + 1] || '').trim();
+
+      if (tweetText) {
+        tweets.push({ number: num, text: tweetText });
+      }
+    }
+
+    return tweets;
+  },
+
+  /**
+   * Render a thread with visual connectors into a container element.
+   * @param {string} containerId - DOM element ID to render into
+   * @param {Array<{number: number, text: string}>} threadTweets - Parsed tweets
+   * @param {Object} options - Callbacks and configuration
+   */
+  renderThread(containerId, threadTweets, options = {}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const tweetCount = threadTweets.length;
+
+    const tweetsHTML = threadTweets.map((tweet, index) => {
+      const isLast = index === tweetCount - 1;
+      const charCount = tweet.text.length;
+      const charClass = this.getCharClass(charCount);
+
+      return `
+        <div class="thread-tweet${isLast ? ' thread-tweet-last' : ''}">
+          <div class="thread-connector">
+            <span class="thread-number">${tweet.number}/</span>
+            ${!isLast ? '<div class="thread-line"></div>' : ''}
+          </div>
+          <div class="thread-tweet-content">
+            <div class="thread-tweet-text">${escapeHTML(tweet.text)}</div>
+            <div class="thread-tweet-footer">
+              <span class="thread-char-count ${charClass}">${charCount} chars</span>
+              <button class="btn btn-ghost btn-sm copy-tweet-btn" data-index="${index}">Copy</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const html = `
+      <div class="thread-container">
+        <div class="thread-header">
+          <span class="thread-label">Thread · ${tweetCount} tweet${tweetCount !== 1 ? 's' : ''}</span>
+          <button class="btn btn-secondary btn-sm copy-thread-btn">📋 Copy Thread</button>
+        </div>
+        <div class="thread-tweets">
+          ${tweetsHTML}
+        </div>
+        <button class="btn btn-ghost w-full mt-3" id="regenerate-tweet-btn">
+          🔄 Regenerate
+        </button>
+      </div>
+    `;
+
+    container.innerHTML = html;
+
+    // Bind event listeners
+    this.bindEvents(container, threadTweets, options);
+  },
+
+  /**
+   * Bind click events for copy and regenerate buttons.
+   */
+  bindEvents(container, threadTweets, options) {
+    // Copy Thread button
+    const copyThreadBtn = container.querySelector('.copy-thread-btn');
+    if (copyThreadBtn) {
+      copyThreadBtn.addEventListener('click', () => {
+        const formatted = this.formatForCopy(threadTweets);
+        if (options.onCopyThread) {
+          options.onCopyThread(formatted);
+        } else {
+          this.copyToClipboard(formatted);
+        }
+      });
+    }
+
+    // Individual Copy buttons
+    container.querySelectorAll('.copy-tweet-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const index = parseInt(btn.dataset.index, 10);
+        const tweetText = threadTweets[index].text;
+        if (options.onCopyTweet) {
+          options.onCopyTweet(index, tweetText);
+        } else {
+          this.copyToClipboard(tweetText);
+        }
+      });
+    });
+
+    // Regenerate button
+    const regenBtn = container.querySelector('#regenerate-tweet-btn');
+    if (regenBtn && options.onRegenerate) {
+      regenBtn.addEventListener('click', () => {
+        options.onRegenerate();
+      });
+    }
+  },
+
+  /**
+   * Format thread tweets for clipboard copy.
+   * Each tweet is prefixed with its number and separated by double newlines.
+   * @param {Array<{number: number, text: string}>} threadTweets
+   * @returns {string}
+   */
+  formatForCopy(threadTweets) {
+    return threadTweets
+      .map(tweet => `${tweet.number}/ ${tweet.text}`)
+      .join('\n\n');
+  },
+
+  /**
+   * Check if a text string looks like a thread (has numbered tweet pattern).
+   * @param {string} text
+   * @returns {boolean}
+   */
+  isThread(text) {
+    if (!text || typeof text !== 'string') return false;
+    // Must have at least "1/" and "2/" patterns to be considered a thread
+    const matches = text.match(/\d+\/\s/g);
+    return matches !== null && matches.length >= 2;
+  },
+
+  /**
+   * Get CSS class for character count color coding.
+   * @param {number} count - Character count
+   * @returns {string} CSS class name
+   */
+  getCharClass(count) {
+    if (count <= 240) return 'char-ok';
+    if (count <= 280) return 'char-warn';
+    return 'char-over';
+  },
+
+  /**
+   * Copy text to clipboard with fallback.
+   * @param {string} text
+   */
+  async copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      Toast.show('Copied to clipboard!');
+    } catch (error) {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      Toast.show('Copied to clipboard!');
+    }
+  }
+};
+
 const TweetGeneratorModule = {
   _pendingTopic: null,
+  currentInputs: null,
 
   render() {
     return `<div class="module-tweet-generator">
@@ -1063,6 +1246,8 @@ const TweetGeneratorModule = {
     if (!ErrorHandler.validateRequired('tweet-topic', 'Topic')) return;
     if (!ErrorHandler.requireAPIKey('tweet-output')) return;
 
+    this.currentInputs = { topic, tone, format };
+
     const controller = new AbortController();
     ErrorHandler.showLoading('tweet-output', 'Generating tweets…', controller);
     try {
@@ -1098,6 +1283,52 @@ const TweetGeneratorModule = {
   },
 
   renderOutput(variations) {
+    const format = this.currentInputs?.format;
+
+    if (format === 'thread') {
+      const outputContainer = document.getElementById('tweet-output');
+      outputContainer.innerHTML = '';
+
+      for (let i = 0; i < variations.length; i++) {
+        const v = variations[i];
+        const tweets = ThreadFormatter.parseThread(v.text);
+
+        if (tweets.length > 1) {
+          // Valid thread — render with ThreadFormatter
+          ThreadFormatter.renderThread('tweet-output', tweets, {
+            onCopyThread: (formatted) => {
+              ThreadFormatter.copyToClipboard(formatted);
+            },
+            onCopyTweet: (index, text) => {
+              ThreadFormatter.copyToClipboard(text);
+            },
+            onRegenerate: () => {
+              this.generate();
+            }
+          });
+          return; // Only render first valid thread variation
+        }
+      }
+
+      // Fallback: if no valid thread was parsed, check if text looks like a thread
+      if (document.getElementById('tweet-output').innerHTML === '') {
+        const firstText = variations[0]?.text || '';
+        if (ThreadFormatter.isThread(firstText)) {
+          const tweets = ThreadFormatter.parseThread(firstText);
+          ThreadFormatter.renderThread('tweet-output', tweets, {
+            onRegenerate: () => this.generate()
+          });
+        } else {
+          this.renderStandardOutput(variations);
+        }
+      }
+      return;
+    }
+
+    this.renderStandardOutput(variations);
+  },
+
+  renderStandardOutput(variations) {
     OutputCard.render('tweet-output', variations, {
       charLimit: 280,
       copyClass: 'copy-tweet-btn',
@@ -1399,9 +1630,9 @@ const BioBuilderModule = {
 
 const MODULE_BADGES = {
   'tweet-generator': { label: 'Tweet', color: '#1D9BF0' },
-  'reply-writer':    { label: 'Reply', color: '#4CAF50' },
+  'reply-writer': { label: 'Reply', color: '#4CAF50' },
   'content-planner': { label: 'Ideas', color: '#FF9800' },
-  'bio-builder':     { label: 'Bio',   color: '#9C27B0' }
+  'bio-builder': { label: 'Bio', color: '#9C27B0' }
 };
 
 // ─── History Module ────────────────────────────────────────────────────────
@@ -1465,7 +1696,7 @@ const HistoryModule = {
   },
 
   renderHistoryItem(item, index) {
-    const badge   = this.getModuleBadge(item.module);
+    const badge = this.getModuleBadge(item.module);
     const timeStr = this.formatTimestamp(item.timestamp);
     const preview = this.truncateText(item.content, 80);
     return `
@@ -1484,8 +1715,8 @@ const HistoryModule = {
     const item = this.currentItems[index];
     if (!item) return;
 
-    const badge    = this.getModuleBadge(item.module);
-    const timeStr  = this.formatTimestamp(item.timestamp);
+    const badge = this.getModuleBadge(item.module);
+    const timeStr = this.formatTimestamp(item.timestamp);
     const charCount = item.content.length;
     const container = document.getElementById('history-container');
 
@@ -1549,19 +1780,19 @@ const HistoryModule = {
    */
   formatTimestamp(isoString) {
     if (!isoString) return 'Unknown';
-    const now     = new Date();
-    const then    = new Date(isoString);
-    const diffMs  = now - then;
+    const now = new Date();
+    const then = new Date(isoString);
+    const diffMs = now - then;
     const diffSec = Math.floor(diffMs / 1000);
     const diffMin = Math.floor(diffSec / 60);
     const diffHour = Math.floor(diffMin / 60);
-    const diffDay  = Math.floor(diffHour / 24);
+    const diffDay = Math.floor(diffHour / 24);
 
-    if (diffSec < 60)    return 'Just now';
-    if (diffMin < 60)    return `${diffMin} min ago`;
-    if (diffHour < 24)   return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
-    if (diffDay === 1)   return 'Yesterday';
-    if (diffDay < 7)     return `${diffDay} days ago`;
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return `${diffMin} min ago`;
+    if (diffHour < 24) return `${diffHour} hour${diffHour !== 1 ? 's' : ''} ago`;
+    if (diffDay === 1) return 'Yesterday';
+    if (diffDay < 7) return `${diffDay} days ago`;
     return then.toLocaleDateString();
   },
 
