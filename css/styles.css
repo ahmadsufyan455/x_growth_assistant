@@ -591,6 +591,7 @@ body {
 
 .idea-card:hover {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 1px rgba(29, 155, 240, 0.1);
   transform: translateY(-1px);
 }
 
@@ -620,10 +621,31 @@ body {
   line-height: 1.5;
 }
 
-.idea-card-hint {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-top: var(--spacing-xs);
+/* Action button — hidden by default, revealed on card hover */
+.idea-use-btn {
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  font-size: 13px;
+  color: var(--accent-primary);
+  cursor: pointer;
+  padding: 6px 12px;
+  margin-top: var(--spacing-sm);
+  display: block;
+}
+
+.idea-card:hover .idea-use-btn {
+  opacity: 1;
+}
+
+.idea-use-btn:hover {
+  background: rgba(29, 155, 240, 0.12) !important;
+  color: var(--accent-primary);
+}
+
+.idea-use-btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 a.text-accent {
@@ -694,6 +716,11 @@ a.text-accent:hover {
 
   .main-content {
     padding: var(--spacing-md);
+  }
+
+  /* Mobile: always show the "Use this idea" button (no hover on touch) */
+  .idea-use-btn {
+    opacity: 1;
   }
 }
 

@@ -1038,9 +1038,20 @@ const TweetGeneratorModule = {
   init() {
     document.getElementById('generate-tweet-btn').addEventListener('click', () => this.generate());
     document.getElementById('tweet-topic').addEventListener('focus', () => ErrorHandler.clearFieldError('tweet-topic'));
+
+    // Legacy: _pendingTopic (kept for backward compat)
     if (this._pendingTopic) {
       document.getElementById('tweet-topic').value = this._pendingTopic;
       this._pendingTopic = null;
+    }
+
+    // NEW: Consume cross-module data payload from NavigationManager
+    const pendingData = NavigationManager.consumePendingData();
+    if (pendingData && pendingData.topic) {
+      const topicField = document.getElementById('tweet-topic');
+      topicField.value = pendingData.topic;
+      topicField.focus();
+      topicField.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   },
 
@@ -1253,24 +1264,51 @@ const ContentPlannerModule = {
         <div class="idea-card-day">${escapeHTML(idea.day)}</div>
         <span class="idea-card-type">${escapeHTML(idea.type)}</span>
         <div class="idea-card-text">${escapeHTML(idea.idea)}</div>
-        <div class="idea-card-hint">\u2197 Click to open in Tweet Generator</div>
+        <button class="btn btn-ghost btn-sm idea-use-btn"
+                data-idea="${escapeHTML(idea.idea)}"
+                aria-label="Use this idea in Tweet Generator">
+          Use this idea &rarr;
+        </button>
       </div>`).join('');
 
     document.getElementById('planner-output').innerHTML =
       `<div class="week-grid">${cards}</div>
        <button id="regen-plan-btn" class="btn btn-ghost w-full mt-4">🔄 Regenerate</button>`;
 
+    // Card-level click (whole card is still clickable)
     document.querySelectorAll('.idea-card').forEach((card) => {
-      const open = () => {
-        TweetGeneratorModule._pendingTopic = card.dataset.idea;
-        NavigationManager.switchModule('tweet-generator');
-      };
+      const open = () => this.useIdeaForTweet(card.dataset.idea);
       card.addEventListener('click', open);
       card.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
       });
     });
+
+    // Dedicated button listeners (stopPropagation prevents double-fire)
+    this.setupIdeaButtons();
+
     document.getElementById('regen-plan-btn').addEventListener('click', () => this.generate());
+  },
+
+  /**
+   * Attach click handlers to all "Use this idea" buttons.
+   * Uses stopPropagation so the parent card click doesn't also fire.
+   */
+  setupIdeaButtons() {
+    document.querySelectorAll('.idea-use-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.useIdeaForTweet(e.currentTarget.dataset.idea);
+      });
+    });
+  },
+
+  /**
+   * Navigate to Tweet Generator with the selected idea pre-filled as the topic.
+   * @param {string} ideaText
+   */
+  useIdeaForTweet(ideaText) {
+    NavigationManager.switchModule('tweet-generator', { topic: ideaText });
   }
 };
 
@@ -1576,6 +1614,8 @@ const HistoryModule = {
 
 const NavigationManager = {
   currentModule: 'tweet-generator',
+  /** Stores a one-time data payload for cross-module communication (e.g., idea → tweet topic). */
+  pendingData: null,
 
   init() {
     this.setupMobileSettingsTab();
@@ -1608,8 +1648,27 @@ const NavigationManager = {
     });
   },
 
-  switchModule(moduleName) {
-    if (this.currentModule === moduleName) return;
+  /**
+   * Consume pending cross-module data (one-time read; clears after).
+   * @returns {object|null}
+   */
+  consumePendingData() {
+    const data = this.pendingData;
+    this.pendingData = null;
+    return data;
+  },
+
+  /**
+   * Switch to a module, optionally passing a data payload to it.
+   * @param {string} moduleName
+   * @param {object|null} data - Optional payload (e.g., { topic: "..." })
+   */
+  switchModule(moduleName, data = null) {
+    // Store pending data BEFORE same-module guard so re-renders with new data work
+    if (data) this.pendingData = data;
+
+    // If same module and no new data, no-op
+    if (this.currentModule === moduleName && !data) return;
 
     document.querySelectorAll('.nav-tab').forEach((tab) => {
       tab.classList.remove('active');
