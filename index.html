@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="AI-powered X content assistant for software engineers">
   <title>X Growth Assistant</title>
-  
+
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+
   <style>
     :root {
       /* Colors */
@@ -25,23 +28,23 @@
       --border-color: #2A2A2A;
       --error-color: #F44336;
       --success-color: #4CAF50;
-      
+
       /* Typography */
       --font-ui: 'Syne', sans-serif;
       --font-mono: 'JetBrains Mono', monospace;
-      
+
       /* Spacing */
       --spacing-xs: 4px;
       --spacing-sm: 8px;
       --spacing-md: 16px;
       --spacing-lg: 24px;
       --spacing-xl: 32px;
-      
+
       /* Border Radius */
       --radius-sm: 4px;
       --radius-md: 8px;
       --radius-lg: 12px;
-      
+
       /* Transitions */
       --transition-fast: 150ms ease;
       --transition-normal: 250ms ease;
@@ -61,196 +64,1735 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
     }
+
+    /* ── App Container (TR-01: Flexbox shell) ──────────────────────────────── */
+    #app {
+      display: flex;
+      min-height: 100vh;
+      background: var(--bg-primary);
+    }
+
+    /* ── Sidebar (TR-05: sticky) ────────────────────────────────────────────── */
+    .sidebar {
+      width: 280px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: var(--spacing-xl) var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .app-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--spacing-xs);
+      letter-spacing: -0.3px;
+    }
+
+    .app-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 400;
+    }
+
+    /* ── Navigation Tabs ────────────────────────────────────────────────────── */
+    .nav-modules {
+      flex: 1;
+      padding: var(--spacing-md) 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nav-tab {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: transparent;
+      border: none;
+      border-left: 3px solid transparent;
+      color: var(--text-secondary);
+      font-family: var(--font-ui);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      text-align: left;
+      min-height: 44px;
+      /* TR accessibility touch target */
+    }
+
+    .nav-tab:hover {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .nav-tab:focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: -2px;
+    }
+
+    .nav-tab.active {
+      background: var(--bg-tertiary);
+      color: var(--accent-primary);
+      border-left-color: var(--accent-primary);
+    }
+
+    .nav-icon {
+      font-size: 18px;
+      width: 22px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    .nav-label {
+      flex: 1;
+    }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--border-color);
+      padding: var(--spacing-sm) 0;
+    }
+
+    /* ── Main Content ───────────────────────────────────────────────────────── */
+    .main-content {
+      flex: 1;
+      padding: var(--spacing-xl);
+      overflow-y: auto;
+      min-width: 0;
+      /* prevent flex overflow */
+    }
+
+    #module-container {
+      max-width: 860px;
+      margin: 0 auto;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Module placeholder (shown until real modules land) */
+    .module-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-md);
+      padding: var(--spacing-xl);
+      border: 1px dashed var(--border-color);
+      border-radius: var(--radius-lg);
+      color: var(--text-tertiary);
+      text-align: center;
+      min-height: 260px;
+    }
+
+    .module-placeholder .ph-icon {
+      font-size: 40px;
+    }
+
+    .module-placeholder .ph-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    .module-placeholder .ph-desc {
+      font-size: 14px;
+    }
+
+    /* ── Responsive: Mobile (<768px) ────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      #app {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .sidebar-header {
+        padding: var(--spacing-md) var(--spacing-lg);
+      }
+
+      .app-title {
+        font-size: 18px;
+      }
+
+      .nav-modules {
+        flex-direction: row;
+        overflow-x: auto;
+        padding: 0;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      .nav-modules::-webkit-scrollbar {
+        display: none;
+      }
+
+      .nav-tab {
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        padding: var(--spacing-sm) var(--spacing-md);
+        min-width: 72px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        text-align: center;
+        font-size: 11px;
+      }
+
+      .nav-tab.active {
+        border-left-color: transparent;
+        border-bottom-color: var(--accent-primary);
+      }
+
+      .nav-label {
+        font-size: 11px;
+      }
+
+      .sidebar-footer {
+        display: none;
+      }
+
+      /* Settings tab shown inline on mobile */
+
+      .main-content {
+        padding: var(--spacing-md);
+      }
+    }
+
+    /* ── Responsive: Tablet (769–1024px) ───────────────────────────────────── */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .sidebar {
+        width: 220px;
+      }
+
+      .nav-tab {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 14px;
+      }
+    }
+
+    /* ═══ Spec 05: Design System ══════════════════════════════════════════════ */
+
+    /* Module header (shared by all modules) */
+    .module-header {
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .module-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--spacing-xs);
+      letter-spacing: -0.4px;
+    }
+
+    .module-description {
+      font-size: 15px;
+      color: var(--text-secondary);
+    }
+
+    /* ── Typography utilities */
+    .text-xs {
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .text-sm {
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .text-base {
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .text-lg {
+      font-size: 18px;
+      line-height: 1.6;
+    }
+
+    .text-xl {
+      font-size: 20px;
+      line-height: 1.5;
+    }
+
+    .text-2xl {
+      font-size: 24px;
+      line-height: 1.4;
+    }
+
+    .font-normal {
+      font-weight: 400;
+    }
+
+    .font-medium {
+      font-weight: 500;
+    }
+
+    .font-semibold {
+      font-weight: 600;
+    }
+
+    .font-bold {
+      font-weight: 700;
+    }
+
+    .font-mono {
+      font-family: var(--font-mono);
+    }
+
+    /* ── Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-lg);
+      font-family: var(--font-ui);
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-secondary);
+      border-color: var(--accent-primary);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover:not(:disabled) {
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+    }
+
+    .btn-icon {
+      padding: var(--spacing-sm);
+      width: 36px;
+      height: 36px;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+
+    .btn-lg {
+      padding: 12px 24px;
+      font-size: 16px;
+    }
+
+    .btn:focus-visible {
+      outline: 2px solid var(--accent-primary);
+      outline-offset: 2px;
+    }
+
+    /* ── Inputs */
+    .input {
+      width: 100%;
+      padding: var(--spacing-md);
+      font-family: var(--font-ui);
+      font-size: 15px;
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      transition: all var(--transition-fast);
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
+    }
+
+    .input::placeholder {
+      color: var(--text-tertiary);
+    }
+
+    .textarea {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23A0A0A0' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+
+    .label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .label-optional {
+      font-weight: 400;
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+
+    .input-group {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    /* ── Cards */
+    .card {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+    }
+
+    .output-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .output-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .output-card-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .output-card-meta {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-tertiary);
+    }
+
+    .output-card-content {
+      font-size: 16px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .output-card-footer {
+      display: flex;
+      gap: var(--spacing-sm);
+      margin-top: var(--spacing-md);
+      padding-top: var(--spacing-md);
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* ── Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-xl);
+      color: var(--text-secondary);
+    }
+
+    .loading-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .loading-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--accent-primary);
+      border-radius: 50%;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .loading-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .loading-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      80%,
+      100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+      }
+
+      40% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: var(--radius-md);
+    }
+
+    @keyframes shimmer {
+      0% {
+        background-position: 200% 0;
+      }
+
+      100% {
+        background-position: -200% 0;
+      }
+    }
+
+    /* ── Alerts */
+    .alert {
+      padding: var(--spacing-md);
+      border-radius: var(--radius-md);
+      font-size: 14px;
+      line-height: 1.5;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .alert-error {
+      background: rgba(244, 67, 54, 0.1);
+      border: 1px solid rgba(244, 67, 54, 0.3);
+      color: #FF6B6B;
+    }
+
+    .alert-success {
+      background: rgba(76, 175, 80, 0.1);
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      color: #81C784;
+    }
+
+    .alert-warning {
+      background: rgba(255, 152, 0, 0.1);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      color: #FFB74D;
+    }
+
+    .alert-info {
+      background: rgba(29, 155, 240, 0.1);
+      border: 1px solid rgba(29, 155, 240, 0.3);
+      color: var(--accent-primary);
+    }
+
+    .alert-icon {
+      display: flex;
+      gap: var(--spacing-sm);
+      align-items: flex-start;
+    }
+
+    .alert-icon-symbol {
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    /* ── Utilities */
+    .mt-0 {
+      margin-top: 0
+    }
+
+    .mt-1 {
+      margin-top: var(--spacing-xs)
+    }
+
+    .mt-2 {
+      margin-top: var(--spacing-sm)
+    }
+
+    .mt-3 {
+      margin-top: var(--spacing-md)
+    }
+
+    .mt-4 {
+      margin-top: var(--spacing-lg)
+    }
+
+    .mt-5 {
+      margin-top: var(--spacing-xl)
+    }
+
+    .mb-0 {
+      margin-bottom: 0
+    }
+
+    .mb-1 {
+      margin-bottom: var(--spacing-xs)
+    }
+
+    .mb-2 {
+      margin-bottom: var(--spacing-sm)
+    }
+
+    .mb-3 {
+      margin-bottom: var(--spacing-md)
+    }
+
+    .mb-4 {
+      margin-bottom: var(--spacing-lg)
+    }
+
+    .mb-5 {
+      margin-bottom: var(--spacing-xl)
+    }
+
+    .flex {
+      display: flex
+    }
+
+    .flex-col {
+      flex-direction: column
+    }
+
+    .items-center {
+      align-items: center
+    }
+
+    .justify-between {
+      justify-content: space-between
+    }
+
+    .gap-1 {
+      gap: var(--spacing-xs)
+    }
+
+    .gap-2 {
+      gap: var(--spacing-sm)
+    }
+
+    .gap-3 {
+      gap: var(--spacing-md)
+    }
+
+    .text-center {
+      text-align: center
+    }
+
+    .text-right {
+      text-align: right
+    }
+
+    .text-primary {
+      color: var(--text-primary)
+    }
+
+    .text-secondary {
+      color: var(--text-secondary)
+    }
+
+    .text-tertiary {
+      color: var(--text-tertiary)
+    }
+
+    .text-accent {
+      color: var(--accent-primary)
+    }
+
+    .w-full {
+      width: 100%
+    }
+
+    .hidden {
+      display: none
+    }
+
+    .opacity-50 {
+      opacity: 0.5
+    }
+
+    /* Content planner calendar grid */
+    .week-grid {
+      display: grid;
+      gap: var(--spacing-md);
+    }
+
+    .idea-card {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-md);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .idea-card:hover {
+      border-color: var(--accent-primary);
+      transform: translateY(-1px);
+    }
+
+    .idea-card-day {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .idea-card-type {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-tertiary);
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+      padding: 2px 8px;
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .idea-card-text {
+      font-size: 14px;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .idea-card-hint {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-top: var(--spacing-xs);
+    }
+
+    /* Settings link style */
+    a.text-accent {
+      color: var(--accent-primary);
+      text-decoration: none;
+    }
+
+    a.text-accent:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
+
 <body>
   <div id="app">
-    <!-- Application structure will be built here -->
+    <!-- ── Sidebar Navigation ───────────────────────────────────────────────── -->
+    <aside class="sidebar" role="complementary">
+      <div class="sidebar-header">
+        <h1 class="app-title">X Growth Assistant</h1>
+        <p class="app-subtitle">AI co-pilot for engineers</p>
+      </div>
+
+      <nav class="nav-modules" role="navigation" aria-label="Main modules">
+        <button class="nav-tab active" data-module="tweet-generator" aria-current="page" id="nav-tweet-generator">
+          <span class="nav-icon" aria-hidden="true">✍️</span>
+          <span class="nav-label">Tweet Generator</span>
+        </button>
+        <button class="nav-tab" data-module="reply-writer" id="nav-reply-writer">
+          <span class="nav-icon" aria-hidden="true">💬</span>
+          <span class="nav-label">Reply Writer</span>
+        </button>
+        <button class="nav-tab" data-module="content-planner" id="nav-content-planner">
+          <span class="nav-icon" aria-hidden="true">📅</span>
+          <span class="nav-label">Content Ideas</span>
+        </button>
+        <button class="nav-tab" data-module="bio-builder" id="nav-bio-builder">
+          <span class="nav-icon" aria-hidden="true">👤</span>
+          <span class="nav-label">Bio Builder</span>
+        </button>
+        <!-- Settings also in main nav for mobile (sidebar-footer hidden on mobile) -->
+        <button class="nav-tab" data-module="settings" id="nav-settings-mobile" style="display:none" aria-hidden="true">
+          <span class="nav-icon" aria-hidden="true">⚙️</span>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="nav-tab" data-module="settings" id="nav-settings">
+          <span class="nav-icon" aria-hidden="true">⚙️</span>
+          <span class="nav-label">Settings</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── Main Content Area ─────────────────────────────────────────────────── -->
+    <main class="main-content" id="main-content" role="main" aria-live="polite" aria-label="Module content">
+      <div id="module-container">
+        <!-- Active module renders here -->
+      </div>
+    </main>
   </div>
-  
+
   <script>
-    // Gemini API Configuration
+    // ─── Gemini API Configuration ─────────────────────────────────────────────
     const GeminiAPI = {
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/models',
-      model: 'gemini-2.5-flash',
-      maxOutputTokens: 1024,
+      model: 'gemini-2.5-flash-lite',
+      maxOutputTokens: 4096,
       timeout: 8000,
-      
+
       systemPrompt: `You are a personal branding expert for software engineers building in public on X.
 The user is a software engineer transitioning to solopreneur, focused on AI and indie hacking.
 Write content that feels authentic, smart, and human.
 No hashtags. Minimal emojis. Engineer voice. Return only raw JSON.`
-    }
+    };
 
-    // Application State
+    // ─── Storage Layer ────────────────────────────────────────────────────────
+    // TR-01: Namespaced keys with xgrowth_ prefix
+    const StorageKeys = {
+      API_KEY: 'xgrowth_api_key',
+      NICHE_PROFILE: 'xgrowth_niche',
+      HISTORY: 'xgrowth_history',
+      SETTINGS: 'xgrowth_settings'
+    };
+
+    const StorageManager = {
+
+      // ── API Key ────────────────────────────────────────────────────────────
+      // FR-01 / US-STORAGE-01: persist API key with base64 obfuscation
+      saveAPIKey(apiKey) {
+        try {
+          const encoded = btoa(apiKey); // minimal obfuscation per spec note
+          localStorage.setItem(StorageKeys.API_KEY, encoded);
+          return true;
+        } catch (error) {
+          // TR-05: never log the key value itself
+          console.error('Failed to save API key:', error.name);
+          return false;
+        }
+      },
+
+      loadAPIKey() {
+        try {
+          const encoded = localStorage.getItem(StorageKeys.API_KEY);
+          if (!encoded) return null;
+          return atob(encoded);
+        } catch (error) {
+          console.error('Failed to load API key:', error.name);
+          return null;
+        }
+      },
+
+      clearAPIKey() {
+        localStorage.removeItem(StorageKeys.API_KEY);
+      },
+
+      // ── Niche Profile ──────────────────────────────────────────────────────
+      // FR-02 / US-STORAGE-02: persist niche profile with validation
+      saveNicheProfile(profile) {
+        try {
+          const validated = this.validateNicheProfile(profile);
+          localStorage.setItem(StorageKeys.NICHE_PROFILE, JSON.stringify(validated));
+          return true;
+        } catch (error) {
+          console.error('Failed to save niche profile:', error.name);
+          return false;
+        }
+      },
+
+      loadNicheProfile() {
+        try {
+          const raw = localStorage.getItem(StorageKeys.NICHE_PROFILE);
+          if (!raw) return null;
+          const profile = JSON.parse(raw); // TR-03: parse may throw on corruption
+          return this.validateNicheProfile(profile);
+        } catch (error) {
+          // TR-03: corrupted JSON → return null (safe default)
+          console.error('Failed to load niche profile:', error.name);
+          return null;
+        }
+      },
+
+      // TR-03: validate & coerce niche profile shape
+      validateNicheProfile(profile) {
+        return {
+          role: profile?.role || '',
+          experience: profile?.experience || '',
+          focusAreas: Array.isArray(profile?.focusAreas) ? profile.focusAreas : [],
+          tone: profile?.tone || 'authentic',
+          customContext: profile?.customContext || ''
+        };
+      },
+
+      // ── History ────────────────────────────────────────────────────────────
+      // FR-03 / US-STORAGE-03: FIFO queue, max 20 items (TR-04)
+      addToHistory(item) {
+        try {
+          const history = this.loadHistory();
+          const historyItem = {
+            id: Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            module: item.module,
+            content: item.content,
+            metadata: item.metadata || {}
+          };
+
+          history.unshift(historyItem);          // most-recent first
+          const trimmed = history.slice(0, 20);  // cap at 20 items
+
+          localStorage.setItem(StorageKeys.HISTORY, JSON.stringify(trimmed));
+          return true;
+        } catch (error) {
+          if (error.name === 'QuotaExceededError') {
+            // FR-05: quota exceeded → clear history and retry once
+            this.clearHistory();
+            return this.addToHistory(item);
+          }
+          console.error('Failed to add to history:', error.name);
+          return false;
+        }
+      },
+
+      loadHistory() {
+        try {
+          const raw = localStorage.getItem(StorageKeys.HISTORY);
+          if (!raw) return [];
+          const history = JSON.parse(raw);
+          return Array.isArray(history) ? history : []; // TR-03: guard against corrupted type
+        } catch (error) {
+          console.error('Failed to load history:', error.name);
+          return [];
+        }
+      },
+
+      clearHistory() {
+        localStorage.removeItem(StorageKeys.HISTORY);
+      },
+
+      // ── Settings ───────────────────────────────────────────────────────────
+      saveSettings(settings) {
+        try {
+          localStorage.setItem(StorageKeys.SETTINGS, JSON.stringify(settings));
+          return true;
+        } catch (error) {
+          console.error('Failed to save settings:', error.name);
+          return false;
+        }
+      },
+
+      loadSettings() {
+        try {
+          const raw = localStorage.getItem(StorageKeys.SETTINGS);
+          if (!raw) return this.getDefaultSettings();
+          return { ...this.getDefaultSettings(), ...JSON.parse(raw) }; // merge with defaults
+        } catch (error) {
+          console.error('Failed to load settings:', error.name);
+          return this.getDefaultSettings();
+        }
+      },
+
+      getDefaultSettings() {
+        return {
+          theme: 'dark',
+          autoSaveHistory: true,
+          showCharCount: true,
+          defaultTone: 'authentic'
+        };
+      },
+
+      // ── Utilities ──────────────────────────────────────────────────────────
+      // FR-04: clear all namespaced keys
+      clearAll() {
+        Object.values(StorageKeys).forEach(key => {
+          localStorage.removeItem(key);
+        });
+      },
+
+      // Monitor storage consumption across namespaced keys
+      getStorageUsage() {
+        let total = 0;
+        Object.values(StorageKeys).forEach(key => {
+          const item = localStorage.getItem(key);
+          if (item) total += item.length;
+        });
+        return {
+          bytes: total,
+          kb: (total / 1024).toFixed(2),
+          percentage: ((total / (5 * 1024 * 1024)) * 100).toFixed(2) // 5 MB assumed quota
+        };
+      }
+    };
+
+    // ─── Application State ────────────────────────────────────────────────────
     const AppState = {
       apiKey: null,
       nicheProfile: null,
       currentModule: 'tweet-generator',
       history: [],
-      
+      settings: {},
+
       init() {
         this.loadFromStorage();
         this.setupEventListeners();
         this.render();
       },
-      
+
+      // Hydrate in-memory state from StorageManager
       loadFromStorage() {
-        this.apiKey = localStorage.getItem('xgrowth_api_key');
-        this.nicheProfile = JSON.parse(localStorage.getItem('xgrowth_niche') || 'null');
-        this.history = JSON.parse(localStorage.getItem('xgrowth_history') || '[]');
-      },
-      
-      saveToStorage() {
-        if (this.apiKey) localStorage.setItem('xgrowth_api_key', this.apiKey);
-        if (this.nicheProfile) localStorage.setItem('xgrowth_niche', JSON.stringify(this.nicheProfile));
-        localStorage.setItem('xgrowth_history', JSON.stringify(this.history));
+        this.apiKey = StorageManager.loadAPIKey();
+        this.nicheProfile = StorageManager.loadNicheProfile();
+        this.history = StorageManager.loadHistory();
+        this.settings = StorageManager.loadSettings();
       },
 
-      // Gemini API - JSON Extraction
+      // ── Delegating writes through StorageManager ──────────────────────────
+      saveAPIKey(apiKey) {
+        this.apiKey = apiKey;
+        StorageManager.saveAPIKey(apiKey);
+      },
+
+      saveNicheProfile(profile) {
+        this.nicheProfile = profile;
+        StorageManager.saveNicheProfile(profile);
+      },
+
+      saveSettings(settings) {
+        this.settings = { ...this.settings, ...settings };
+        StorageManager.saveSettings(this.settings);
+      },
+
+      addToHistory(item) {
+        StorageManager.addToHistory(item);
+        this.history = StorageManager.loadHistory(); // re-sync in-memory list
+      },
+
+      // FR-04 / US-STORAGE-01: confirm before wiping all data
+      clearAllData() {
+        if (confirm('Clear all saved data? This cannot be undone.')) {
+          StorageManager.clearAll();
+          this.loadFromStorage();
+          this.render();
+        }
+      },
+
+      // ── Gemini API ────────────────────────────────────────────────────────
       extractJSON(rawText) {
         // Strategy 1: Direct parse
-        try {
-          return JSON.parse(rawText)
-        } catch (e) {}
+        try { return JSON.parse(rawText); } catch (e) { }
 
         // Strategy 2: Strip markdown code fences
         try {
-          const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-          if (fenceMatch) {
-            return JSON.parse(fenceMatch[1])
-          }
-        } catch (e) {}
+          const fenceMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+          if (fenceMatch) return JSON.parse(fenceMatch[1]);
+        } catch (e) { }
 
-        // Strategy 3: Extract JSON object with regex
+        // Strategy 3: Extract bare JSON object
         try {
-          const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-          if (jsonMatch) {
-            return JSON.parse(jsonMatch[0])
-          }
-        } catch (e) {}
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+          if (jsonMatch) return JSON.parse(jsonMatch[0]);
+        } catch (e) { }
 
-        // All strategies failed
-        throw new Error('Failed to parse JSON response. Raw output:\n' + rawText.substring(0, 500))
+        throw new Error('Failed to parse JSON response. Raw output:\n' + rawText.substring(0, 500));
       },
 
-      // Gemini API - Core API Call
       async callGeminiAPI(userMessage, apiKey, customSystemPrompt = null) {
         if (!apiKey) {
-          throw new Error('API key is required. Please set it in Settings.')
+          throw new Error('API key is required. Please set it in Settings.');
         }
 
-        const controller = new AbortController()
-        const timeoutId = setTimeout(() => controller.abort(), GeminiAPI.timeout)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), GeminiAPI.timeout);
 
         try {
-          const response = await fetch(`${GeminiAPI.baseURL}/${GeminiAPI.model}:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            signal: controller.signal,
-            body: JSON.stringify({
-              systemInstruction: {
-                parts: [{ text: customSystemPrompt || GeminiAPI.systemPrompt }]
-              },
-              contents: [{
-                parts: [{ text: userMessage }]
-              }],
-              generationConfig: {
-                maxOutputTokens: GeminiAPI.maxOutputTokens,
-                temperature: 0.9,
-                topP: 0.95,
-                topK: 40
-              },
-              thinkingConfig: {
-                thinkingBudget: 0
-              }
-            })
-          })
+          const response = await fetch(
+            `${GeminiAPI.baseURL}/${GeminiAPI.model}:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              signal: controller.signal,
+              body: JSON.stringify({
+                systemInstruction: {
+                  parts: [{ text: customSystemPrompt || GeminiAPI.systemPrompt }]
+                },
+                contents: [{ parts: [{ text: userMessage }] }],
+                generationConfig: {
+                  maxOutputTokens: GeminiAPI.maxOutputTokens,
+                  temperature: 0.9,
+                  topP: 0.95,
+                  topK: 40
+                }
+              })
+            }
+          );
 
-          clearTimeout(timeoutId)
+          clearTimeout(timeoutId);
 
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}))
-            throw new Error(this.parseAPIError(response.status, errorData))
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(this.parseAPIError(response.status, errorData));
           }
 
-          const data = await response.json()
-          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text
+          const data = await response.json();
+          const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-          if (!rawText) {
-            throw new Error('Empty response from API')
-          }
+          if (!rawText) throw new Error('Empty response from API');
 
-          return this.extractJSON(rawText)
+          return this.extractJSON(rawText);
         } catch (error) {
-          clearTimeout(timeoutId)
+          clearTimeout(timeoutId);
           if (error.name === 'AbortError') {
-            throw new Error('Request timed out. Please try again.')
+            throw new Error('Request timed out. Please try again.');
           }
-          throw error
+          throw error;
         }
       },
 
-      // Gemini API - Usage Example
       async generateTweet(topic, tone, format) {
-        const userMessage = `Generate 2 tweet variations about: ${topic}
-Tone: ${tone}
-Format: ${format}
-
-Return JSON: { "variations": [{ "label": "Variation 1", "text": "..." }, { "label": "Variation 2", "text": "..." }] }`;
+        const userMessage =
+          `Generate 2 tweet variations about: ${topic}\nTone: ${tone}\nFormat: ${format}\n\n` +
+          `Return JSON: { "variations": [{ "label": "Variation 1", "text": "..." }, { "label": "Variation 2", "text": "..." }] }`;
 
         try {
           const result = await this.callGeminiAPI(userMessage, this.apiKey);
           return result.variations;
         } catch (error) {
-          console.error('Tweet generation failed:', error);
+          console.error('Tweet generation failed:', error.message);
           throw error;
         }
       },
-      
+
+      parseAPIError(statusCode, errorData) {
+        const errorMessage = errorData?.error?.message || '';
+        switch (statusCode) {
+          case 400:
+            return errorMessage.includes('API_KEY_INVALID')
+              ? 'Invalid API key. Please check your key in Settings.'
+              : `Bad request: ${errorMessage}`;
+          case 401: return 'Unauthorized. Please check your API key.';
+          case 403: return 'Access forbidden. Your API key may not have access to this model.';
+          case 429: return 'Rate limit exceeded. Please wait a moment and try again.';
+          case 500:
+          case 502:
+          case 503: return 'Google API is temporarily unavailable. Please try again.';
+          default: return `API error (${statusCode}): ${errorMessage || 'Unknown error'}`;
+        }
+      },
+
       setupEventListeners() {
         // Will be populated by module specs
       },
-      
+
       render() {
-        // Will be populated by layout spec
+        NavigationManager.renderModule(this.currentModule);
+      }
+    };
+
+    // ─── Shared helpers ───────────────────────────────────────────────────────
+    function escapeHTML(str) {
+      const d = document.createElement('div');
+      d.textContent = str;
+      return d.innerHTML;
+    }
+
+    function loadingHTML(label) {
+      return `<div class="loading">
+        <div class="loading-dots">
+          <div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>
+        </div><span>${label}</span></div>`;
+    }
+
+    async function callGeminiAPI(prompt, apiKey) {
+      return AppState.callGeminiAPI(prompt, apiKey);
+    }
+
+    async function copyToClipboard(text, btn) {
+      try {
+        await navigator.clipboard.writeText(text);
+        const orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        setTimeout(() => { btn.textContent = orig; }, 1500);
+      } catch {
+        alert('Failed to copy. Please copy manually.');
+      }
+    }
+
+    // ─── Spec 06: Settings Module ─────────────────────────────────────────────
+    const SettingsModule = {
+      render() {
+        return `<div class="module-settings">
+  <div class="module-header">
+    <h2 class="module-title">Settings</h2>
+    <p class="module-description">Configure your API key and niche profile</p>
+  </div>
+
+  <div class="card mb-4">
+    <h3 class="text-lg font-semibold mb-3">Google Gemini API Key</h3>
+    <p class="text-sm text-secondary mb-3">
+      Get your free API key from
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="text-accent">Google AI Studio</a>.
+    </p>
+    <div class="input-group">
+      <label class="label" for="api-key-input">API Key</label>
+      <input type="password" id="api-key-input" class="input" placeholder="AIza..." autocomplete="off">
+    </div>
+    <div class="flex gap-2">
+      <button id="test-api-btn"  class="btn btn-secondary">Test Connection</button>
+      <button id="save-api-btn"  class="btn btn-primary">Save API Key</button>
+      <button id="clear-api-btn" class="btn btn-ghost">Clear</button>
+    </div>
+    <div id="api-status" class="mt-3"></div>
+  </div>
+
+  <div class="card mb-4">
+    <h3 class="text-lg font-semibold mb-3">Niche Profile</h3>
+    <p class="text-sm text-secondary mb-4">This context is injected into all AI prompts to personalize your content.</p>
+    <div class="input-group">
+      <label class="label" for="profile-role">Role &amp; Experience <span class="label-optional">(e.g., "Software Engineer, 3 years")</span></label>
+      <input type="text" id="profile-role" class="input" placeholder="Software Engineer, 3 years at startups">
+    </div>
+    <div class="input-group">
+      <label class="label" for="profile-focus">Focus Areas <span class="label-optional">(e.g., "AI, indie hacking, React")</span></label>
+      <input type="text" id="profile-focus" class="input" placeholder="AI, indie hacking, React, TypeScript">
+    </div>
+    <div class="input-group">
+      <label class="label" for="profile-context">Additional Context <span class="label-optional">(optional)</span></label>
+      <textarea id="profile-context" class="input textarea" placeholder="What you're building, your goals, unique perspective..."></textarea>
+    </div>
+    <div class="flex gap-2">
+      <button id="save-profile-btn"  class="btn btn-primary">Save Profile</button>
+      <button id="clear-profile-btn" class="btn btn-ghost">Clear</button>
+    </div>
+    <div id="profile-status" class="mt-3"></div>
+  </div>
+
+  <div class="card" style="border-color:var(--error-color)">
+    <h3 class="text-lg font-semibold mb-2" style="color:var(--error-color)">Danger Zone</h3>
+    <p class="text-sm text-secondary mb-3">Clear all saved data including API key, profile, and history.</p>
+    <button id="clear-all-btn" class="btn btn-secondary">Clear All Data</button>
+  </div>
+</div>`;
       },
 
-      // Gemini API - Error Message Mapping
-      parseAPIError(statusCode, errorData) {
-        const errorMessage = errorData?.error?.message || '';
-        
-        switch (statusCode) {
-          case 400:
-            if (errorMessage.includes('API_KEY_INVALID')) {
-              return 'Invalid API key. Please check your key in Settings.';
+      init() {
+        this.loadSavedSettings();
+        this.setupEventListeners();
+      },
+
+      loadSavedSettings() {
+        const apiKey = StorageManager.loadAPIKey();
+        if (apiKey) {
+          document.getElementById('api-key-input').value = apiKey;
+          this.showStatus('api-status', 'API key loaded', 'success');
+        }
+        const profile = StorageManager.loadNicheProfile();
+        if (profile) {
+          document.getElementById('profile-role').value = profile.role || '';
+          document.getElementById('profile-focus').value = profile.focusAreas?.join(', ') || '';
+          document.getElementById('profile-context').value = profile.customContext || '';
+        }
+      },
+
+      setupEventListeners() {
+        document.getElementById('test-api-btn').addEventListener('click', () => this.testAPIConnection());
+        document.getElementById('save-api-btn').addEventListener('click', () => this.saveAPIKey());
+        document.getElementById('clear-api-btn').addEventListener('click', () => this.clearAPIKey());
+        document.getElementById('save-profile-btn').addEventListener('click', () => this.saveProfile());
+        document.getElementById('clear-profile-btn').addEventListener('click', () => this.clearProfile());
+        document.getElementById('clear-all-btn').addEventListener('click', () => this.clearAllData());
+      },
+
+      async testAPIConnection() {
+        const apiKey = document.getElementById('api-key-input').value.trim();
+        if (!apiKey) { this.showStatus('api-status', 'Please enter an API key', 'error'); return; }
+        const btn = document.getElementById('test-api-btn');
+        btn.disabled = true; btn.textContent = 'Testing…';
+        try {
+          await callGeminiAPI('Return JSON: {"status":"ok"}', apiKey);
+          this.showStatus('api-status', '✓ Connected successfully!', 'success');
+        } catch (err) {
+          this.showStatus('api-status', `✗ ${err.message}`, 'error');
+        } finally {
+          btn.disabled = false; btn.textContent = 'Test Connection';
+        }
+      },
+
+      saveAPIKey() {
+        const apiKey = document.getElementById('api-key-input').value.trim();
+        if (!apiKey) { this.showStatus('api-status', 'Please enter an API key', 'error'); return; }
+        if (!apiKey.startsWith('AIza')) { this.showStatus('api-status', 'Invalid key format (should start with "AIza")', 'error'); return; }
+        if (StorageManager.saveAPIKey(apiKey)) {
+          AppState.apiKey = apiKey;
+          this.showStatus('api-status', '✓ API key saved', 'success');
+        } else {
+          this.showStatus('api-status', '✗ Failed to save', 'error');
+        }
+      },
+
+      clearAPIKey() {
+        if (!confirm('Clear saved API key?')) return;
+        StorageManager.clearAPIKey(); AppState.apiKey = null;
+        document.getElementById('api-key-input').value = '';
+        this.showStatus('api-status', 'API key cleared', 'info');
+      },
+
+      saveProfile() {
+        const role = document.getElementById('profile-role').value.trim();
+        const focuses = document.getElementById('profile-focus').value.trim();
+        const ctx = document.getElementById('profile-context').value.trim();
+        const profile = { role, focusAreas: focuses ? focuses.split(',').map(s => s.trim()) : [], customContext: ctx };
+        if (StorageManager.saveNicheProfile(profile)) {
+          AppState.nicheProfile = profile;
+          this.showStatus('profile-status', '✓ Profile saved', 'success');
+        } else {
+          this.showStatus('profile-status', '✗ Failed to save', 'error');
+        }
+      },
+
+      clearProfile() {
+        if (!confirm('Clear niche profile?')) return;
+        ['profile-role', 'profile-focus', 'profile-context'].forEach(id => { document.getElementById(id).value = ''; });
+        StorageManager.saveNicheProfile({ role: '', focusAreas: [], customContext: '' });
+        AppState.nicheProfile = null;
+        this.showStatus('profile-status', 'Profile cleared', 'info');
+      },
+
+      clearAllData() {
+        if (!confirm('⚠️ Clear ALL data? This includes API key, profile, and history. Cannot be undone.')) return;
+        StorageManager.clearAll(); AppState.loadFromStorage(); this.loadSavedSettings();
+        this.showStatus('api-status', 'All data cleared', 'info');
+      },
+
+      showStatus(id, msg, type) {
+        const cls = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-info';
+        document.getElementById(id).innerHTML = `<div class="alert ${cls}">${msg}</div>`;
+        setTimeout(() => { const el = document.getElementById(id); if (el) el.innerHTML = ''; }, 5000);
+      }
+    };
+
+    // ─── Spec 07: Tweet Generator ─────────────────────────────────────────────
+    const TweetGeneratorModule = {
+      render() {
+        return `<div class="module-tweet-generator">
+  <div class="module-header">
+    <h2 class="module-title">Tweet Generator</h2>
+    <p class="module-description">Generate authentic, on-brand tweets in seconds</p>
+  </div>
+  <div class="card mb-4">
+    <div class="input-group">
+      <label class="label" for="tweet-topic">What do you want to tweet about?</label>
+      <textarea id="tweet-topic" class="input textarea" rows="4"
+        placeholder="E.g., 'I just learned about React Server Components and how they solve the data fetching problem...'"></textarea>
+    </div>
+    <div class="flex gap-3">
+      <div class="input-group" style="flex:1">
+        <label class="label" for="tweet-tone">Tone</label>
+        <select id="tweet-tone" class="input select">
+          <option value="authentic">Authentic &amp; direct</option>
+          <option value="contrarian">Slightly contrarian</option>
+          <option value="educational">Educational</option>
+          <option value="storytelling">Storytelling</option>
+          <option value="bold">Bold &amp; provocative</option>
+        </select>
+      </div>
+      <div class="input-group" style="flex:1">
+        <label class="label" for="tweet-format">Format</label>
+        <select id="tweet-format" class="input select">
+          <option value="single">Single tweet</option>
+          <option value="thread">Short thread (3-5 tweets)</option>
+          <option value="hook">Hook tweet only</option>
+        </select>
+      </div>
+    </div>
+    <button id="generate-tweet-btn" class="btn btn-primary w-full">Generate Tweets</button>
+  </div>
+  <div id="tweet-output"></div>
+</div>`;
+      },
+
+      init() {
+        document.getElementById('generate-tweet-btn').addEventListener('click', () => this.generate());
+        // Support pre-fill from Content Planner
+        const pending = TweetGeneratorModule._pendingTopic;
+        if (pending) { document.getElementById('tweet-topic').value = pending; TweetGeneratorModule._pendingTopic = null; }
+      },
+
+      _pendingTopic: null,
+
+      async generate() {
+        const topic = document.getElementById('tweet-topic').value.trim();
+        const tone = document.getElementById('tweet-tone').value;
+        const format = document.getElementById('tweet-format').value;
+        if (!topic) { alert('Please enter a topic'); return; }
+        if (!AppState.apiKey) { alert('Please set your API key in Settings'); return; }
+
+        document.getElementById('tweet-output').innerHTML = loadingHTML('Generating tweets…');
+        try {
+          const result = await callGeminiAPI(this.buildPrompt(topic, tone, format), AppState.apiKey);
+          this.renderOutput(result.variations, tone, format);
+          AppState.addToHistory({ module: 'tweet-generator', content: result.variations[0].text, metadata: { tone, format } });
+        } catch (err) {
+          document.getElementById('tweet-output').innerHTML =
+            `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(err.message)}</div>`;
+        }
+      },
+
+      buildPrompt(topic, tone, format) {
+        const ctx = AppState.nicheProfile
+          ? `User context: ${AppState.nicheProfile.role}. Focus: ${AppState.nicheProfile.focusAreas.join(', ')}.` : '';
+        const tones = { authentic: 'Direct, honest voice. No fluff.', contrarian: 'Challenge common assumptions.', educational: 'Teach something specific. Be actionable.', storytelling: 'Use narrative structure. Make it personal.', bold: 'Be provocative. Take a strong stance.' };
+        const formats = { single: 'Single tweet, max 280 characters.', thread: 'Thread of 3-5 tweets. Number them (1/, 2/, etc.). Each max 280 chars.', hook: 'Just the opening hook. Max 280 chars.' };
+        return `${ctx}\n\nTopic: ${topic}\nTone: ${tones[tone]}\nFormat: ${formats[format]}\n\nGenerate 2 distinct variations. No hashtags. Minimal emojis. Engineer voice.\n\nReturn JSON:\n{\n  "variations": [\n    {"label":"Variation 1","text":"..."},\n    {"label":"Variation 2","text":"..."}\n  ]\n}`;
+      },
+
+      renderOutput(variations, tone, format) {
+        const cards = variations.map(v => `
+          <div class="output-card">
+            <div class="output-card-header">
+              <span class="output-card-label">${escapeHTML(v.label)}</span>
+              <span class="output-card-meta">${v.text.length} chars</span>
+            </div>
+            <div class="output-card-content">${escapeHTML(v.text)}</div>
+            <div class="output-card-footer">
+              <button class="btn btn-secondary btn-sm copy-tweet-btn" data-text="${escapeHTML(v.text)}">📋 Copy</button>
+            </div>
+          </div>`).join('');
+        document.getElementById('tweet-output').innerHTML = cards +
+          `<button id="regen-tweet-btn" class="btn btn-ghost w-full mt-3">🔄 Regenerate</button>`;
+        document.querySelectorAll('.copy-tweet-btn').forEach(btn =>
+          btn.addEventListener('click', () => copyToClipboard(btn.dataset.text, btn)));
+        document.getElementById('regen-tweet-btn').addEventListener('click', () => this.generate());
+      }
+    };
+
+    // ─── Spec 08: Reply Writer ────────────────────────────────────────────────
+    const ReplyWriterModule = {
+      render() {
+        return `<div class="module-reply-writer">
+  <div class="module-header">
+    <h2 class="module-title">Reply Writer</h2>
+    <p class="module-description">Generate thoughtful replies that add value and build visibility</p>
+  </div>
+  <div class="card mb-4">
+    <div class="input-group">
+      <label class="label" for="source-tweet">Paste the tweet you want to reply to</label>
+      <textarea id="source-tweet" class="input textarea" rows="4" placeholder="Paste the full tweet text here..."></textarea>
+    </div>
+    <div class="input-group">
+      <label class="label" for="reply-goal">Reply Goal</label>
+      <select id="reply-goal" class="input select">
+        <option value="add-value">Add value / insight</option>
+        <option value="agree-expand">Agree + expand on their point</option>
+        <option value="challenge">Challenge the take (respectfully)</option>
+        <option value="ask-question">Ask a thoughtful question</option>
+        <option value="introduce">Introduce myself / my work</option>
+      </select>
+    </div>
+    <div class="input-group">
+      <label class="label" for="reply-angle">Your angle <span class="label-optional">(optional — adds personal context)</span></label>
+      <input type="text" id="reply-angle" class="input" placeholder="E.g., 'I faced this issue last month when building...'">
+    </div>
+    <button id="generate-reply-btn" class="btn btn-primary w-full">Generate Replies</button>
+  </div>
+  <div id="reply-output"></div>
+</div>`;
+      },
+
+      init() {
+        document.getElementById('generate-reply-btn').addEventListener('click', () => this.generate());
+      },
+
+      async generate() {
+        const src = document.getElementById('source-tweet').value.trim();
+        const goal = document.getElementById('reply-goal').value;
+        const angle = document.getElementById('reply-angle').value.trim();
+        if (!src) { alert('Please paste the tweet you want to reply to'); return; }
+        if (!AppState.apiKey) { alert('Please set your API key in Settings'); return; }
+
+        document.getElementById('reply-output').innerHTML = loadingHTML('Generating replies…');
+        try {
+          const result = await callGeminiAPI(this.buildPrompt(src, goal, angle), AppState.apiKey);
+          this.renderOutput(result.replies, goal);
+          AppState.addToHistory({ module: 'reply-writer', content: result.replies[0].text, metadata: { goal } });
+        } catch (err) {
+          document.getElementById('reply-output').innerHTML =
+            `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(err.message)}</div>`;
+        }
+      },
+
+      buildPrompt(src, goal, angle) {
+        const ctx = AppState.nicheProfile
+          ? `Your background: ${AppState.nicheProfile.role}. Focus: ${AppState.nicheProfile.focusAreas.join(', ')}.` : '';
+        const goals = { 'add-value': "Add a valuable insight they didn't mention.", 'agree-expand': 'Agree and expand with your own experience.', 'challenge': 'Respectfully challenge with a counterpoint.', 'ask-question': 'Ask a thoughtful question that deepens the conversation.', 'introduce': 'Introduce yourself and your relevant work naturally.' };
+        const angleCtx = angle ? `\nYour angle: ${angle}` : '';
+        return `${ctx}\n\nSource tweet:\n"${src}"\n\nGoal: ${goals[goal]}${angleCtx}\n\nGenerate 3 distinct reply options. Each:\n- Max 280 characters\n- No self-promotion in the text\n- Signal expertise through insight\n- Sound human\n- No hashtags\n\nReturn JSON:\n{\n  "replies": [\n    {"label":"Value add","text":"..."},\n    {"label":"Personal take","text":"..."},\n    {"label":"Question","text":"..."}\n  ]\n}`;
+      },
+
+      renderOutput(replies, goal) {
+        const cards = replies.map(r => `
+          <div class="output-card">
+            <div class="output-card-header">
+              <span class="output-card-label">${escapeHTML(r.label)}</span>
+              <span class="output-card-meta">${r.text.length} chars</span>
+            </div>
+            <div class="output-card-content">${escapeHTML(r.text)}</div>
+            <div class="output-card-footer">
+              <button class="btn btn-secondary btn-sm copy-reply-btn" data-text="${escapeHTML(r.text)}">📋 Copy</button>
+            </div>
+          </div>`).join('');
+        document.getElementById('reply-output').innerHTML = cards +
+          `<button id="regen-reply-btn" class="btn btn-ghost w-full mt-3">🔄 Regenerate</button>`;
+        document.querySelectorAll('.copy-reply-btn').forEach(btn =>
+          btn.addEventListener('click', () => copyToClipboard(btn.dataset.text, btn)));
+        document.getElementById('regen-reply-btn').addEventListener('click', () => this.generate());
+      }
+    };
+
+    // ─── Spec 09: Content Planner ─────────────────────────────────────────────
+    const ContentPlannerModule = {
+      render() {
+        return `<div class="module-content-planner">
+  <div class="module-header">
+    <h2 class="module-title">Content Ideas</h2>
+    <p class="module-description">7-day content calendar — one specific idea per day</p>
+  </div>
+  <div class="card mb-4">
+    <div class="input-group">
+      <label class="label" for="planner-context">Context <span class="label-optional">(optional — recent work, wins, thoughts)</span></label>
+      <textarea id="planner-context" class="input textarea" rows="3" placeholder="E.g., 'Just shipped v2 of my SaaS, learning about LLM fine-tuning, struggling with distribution...'"></textarea>
+    </div>
+    <div class="input-group mb-0">
+      <label class="label" for="planner-focus">Content Focus</label>
+      <select id="planner-focus" class="input select">
+        <option value="mixed">Mixed (balanced variety)</option>
+        <option value="technical">Technical insights</option>
+        <option value="journey">Building in public / journey</option>
+        <option value="lessons">Lessons learned</option>
+        <option value="engagement">Engagement-first (questions + hot takes)</option>
+      </select>
+    </div>
+  </div>
+  <button id="generate-plan-btn" class="btn btn-primary w-full mb-4">Generate 7-Day Plan</button>
+  <div id="planner-output"></div>
+</div>`;
+      },
+
+      init() {
+        document.getElementById('generate-plan-btn').addEventListener('click', () => this.generate());
+      },
+
+      async generate() {
+        if (!AppState.apiKey) { alert('Please set your API key in Settings'); return; }
+        const ctx = document.getElementById('planner-context').value.trim();
+        const focus = document.getElementById('planner-focus').value;
+
+        document.getElementById('planner-output').innerHTML = loadingHTML('Building your content calendar…');
+        try {
+          const result = await callGeminiAPI(this.buildPrompt(ctx, focus), AppState.apiKey);
+          this.renderOutput(result.ideas);
+        } catch (err) {
+          document.getElementById('planner-output').innerHTML =
+            `<div class="alert alert-error"><strong>Error:</strong> ${escapeHTML(err.message)}</div>`;
+        }
+      },
+
+      buildPrompt(ctx, focus) {
+        const profile = AppState.nicheProfile
+          ? `Engineer background: ${AppState.nicheProfile.role}. Focus: ${AppState.nicheProfile.focusAreas.join(', ')}.` : '';
+        const focusMap = { mixed: 'Balanced: mix of technical, personal, lessons, and engagement content.', technical: 'Lean toward technical insights, tutorials, and code discoveries.', journey: 'Focus on building-in-public: progress, setbacks, decisions.', lessons: 'Emphasize lessons learned and hard-won experience.', engagement: 'Prioritize questions, polls, hot takes to drive comments.' };
+        const ctxNote = ctx ? `\nContext: ${ctx}` : '';
+        return `${profile}${ctxNote}\n\nContent focus: ${focusMap[focus]}\n\nGenerate a 7-day X content calendar (Monday to Sunday).\nEach idea must be specific and actionable — NOT generic.\nContent types: Personal story, Hot take, Tutorial, Lesson learned, Behind the scenes, Question, Thread idea.\n\nReturn JSON:\n{\n  "ideas": [\n    {"day":"Monday","idea":"...","type":"..."},\n    {"day":"Tuesday","idea":"...","type":"..."},\n    {"day":"Wednesday","idea":"...","type":"..."},\n    {"day":"Thursday","idea":"...","type":"..."},\n    {"day":"Friday","idea":"...","type":"..."},\n    {"day":"Saturday","idea":"...","type":"..."},\n    {"day":"Sunday","idea":"...","type":"..."}\n  ]\n}`;
+      },
+
+      renderOutput(ideas) {
+        const cards = ideas.map(idea => `
+          <div class="idea-card" data-idea="${escapeHTML(idea.idea)}" role="button" tabindex="0"
+               title="Click to open in Tweet Generator">
+            <div class="idea-card-day">${escapeHTML(idea.day)}</div>
+            <span class="idea-card-type">${escapeHTML(idea.type)}</span>
+            <div class="idea-card-text">${escapeHTML(idea.idea)}</div>
+            <div class="idea-card-hint">↗ Click to open in Tweet Generator</div>
+          </div>`).join('');
+        document.getElementById('planner-output').innerHTML =
+          `<div class="week-grid">${cards}</div>
+           <button id="regen-plan-btn" class="btn btn-ghost w-full mt-4">🔄 Regenerate</button>`;
+
+        document.querySelectorAll('.idea-card').forEach(card => {
+          const open = () => {
+            TweetGeneratorModule._pendingTopic = card.dataset.idea;
+            NavigationManager.switchModule('tweet-generator');
+          };
+          card.addEventListener('click', open);
+          card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+        });
+        document.getElementById('regen-plan-btn').addEventListener('click', () => this.generate());
+      }
+    };
+
+    // ─── Bio Builder stub (spec 10 pending) ──────────────────────────────────
+    const BioBuilderModule = {
+      render() {
+        return `<div class="module-placeholder">
+          <span class="ph-icon">👤</span>
+          <p class="ph-title">Bio Builder</p>
+          <p class="ph-desc">Coming soon — spec 10</p>
+        </div>`;
+      },
+      init() { }
+    };
+
+    // ─── Navigation Manager ───────────────────────────────────────────────────
+    const NavigationManager = {
+      currentModule: 'tweet-generator',
+
+      init() {
+        this.setupMobileSettingsTab();
+        this.setupTabListeners();
+        this.renderModule(this.currentModule);
+      },
+
+      // Show the hidden settings tab inside .nav-modules on mobile
+      setupMobileSettingsTab() {
+        const mobileBtn = document.getElementById('nav-settings-mobile');
+        const applyVisibility = () => {
+          const isMobile = window.innerWidth <= 768;
+          mobileBtn.style.display = isMobile ? '' : 'none';
+          mobileBtn.setAttribute('aria-hidden', isMobile ? 'false' : 'true');
+        };
+        applyVisibility();
+        window.addEventListener('resize', applyVisibility);
+      },
+
+      setupTabListeners() {
+        // TR-04: keyboard + click on every .nav-tab
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+          tab.addEventListener('click', e => {
+            this.switchModule(e.currentTarget.dataset.module);
+          });
+          tab.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              this.switchModule(e.currentTarget.dataset.module);
             }
-            return `Bad request: ${errorMessage}`;
-            
-          case 401:
-            return 'Unauthorized. Please check your API key.';
-            
-          case 403:
-            return 'Access forbidden. Your API key may not have access to this model.';
-            
-          case 429:
-            return 'Rate limit exceeded. Please wait a moment and try again.';
-            
-          case 500:
-          case 502:
-          case 503:
-            return 'Google API is temporarily unavailable. Please try again.';
-            
+          });
+        });
+      },
+
+      switchModule(moduleName) {
+        if (this.currentModule === moduleName) return; // no-op on same tab
+
+        // Update active highlight + ARIA on all tabs
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+          tab.classList.remove('active');
+          tab.removeAttribute('aria-current');
+        });
+        document.querySelectorAll(`[data-module="${moduleName}"]`).forEach(tab => {
+          tab.classList.add('active');
+          tab.setAttribute('aria-current', 'page');
+        });
+
+        // TR-03: re-trigger fade animation
+        const container = document.getElementById('module-container');
+        container.style.animation = 'none';
+        // eslint-disable-next-line no-unused-expressions
+        container.offsetHeight; // reflow
+        container.style.animation = '';
+
+        this.currentModule = moduleName;
+        AppState.currentModule = moduleName;
+        this.renderModule(moduleName);
+      },
+
+      renderModule(moduleName) {
+        const container = document.getElementById('module-container');
+        switch (moduleName) {
+          case 'tweet-generator':
+            container.innerHTML = TweetGeneratorModule.render();
+            TweetGeneratorModule.init();
+            break;
+          case 'reply-writer':
+            container.innerHTML = ReplyWriterModule.render();
+            ReplyWriterModule.init();
+            break;
+          case 'content-planner':
+            container.innerHTML = ContentPlannerModule.render();
+            ContentPlannerModule.init();
+            break;
+          case 'bio-builder':
+            container.innerHTML = BioBuilderModule.render();
+            BioBuilderModule.init();
+            break;
+          case 'settings':
+            container.innerHTML = SettingsModule.render();
+            SettingsModule.init();
+            break;
           default:
-            return `API error (${statusCode}): ${errorMessage || 'Unknown error'}`;
+            container.innerHTML = '<p style="color:var(--text-tertiary)">Module not found.</p>';
         }
       }
     };
 
-    // Initialize on DOM ready
+    // ─── Bootstrap ────────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-      AppState.init();
+      AppState.init();        // hydrate state from localStorage
+      NavigationManager.init(); // build nav listeners + render default module
     });
   </script>
 </body>
+
 </html>
